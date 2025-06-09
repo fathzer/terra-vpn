@@ -1,0 +1,5 @@
+# Ignore everything by default
+*
+
+# Include only what we need
+!entrypoint.sh

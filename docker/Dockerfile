@@ -1,10 +1,16 @@
 FROM hashicorp/terraform:light
 
-RUN apk add --no-cache curl openssh
+# Install required packages
+RUN apk add --no-cache \
+    wget \
+    openssh \
+    && rm -rf /var/cache/apk/*
 
-# Ajout du script d'initialisation
-COPY entrypoint.sh /entrypoint.sh
+# Add initialization script
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Create workspace directory and copy Terraform files
 WORKDIR /workspace
+
 ENTRYPOINT ["/entrypoint.sh"]

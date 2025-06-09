@@ -53,17 +53,17 @@ cp terraform.tfvars.example terraform.tfvars
 nano terraform.tfvars
 ```
 
-2. 🏗️ Build the Docker image
+2. 🏗️ Build the Docker image //TODO or pull from dockerhub
 
 ```bash
-docker build -t terraform-openvpn .
+docker build -f docker/Dockerfile -t terraform-openvpn .
 ```
 
 3. ⚙️ Init terraform
 
 ```bash
 # Run Terraform init (only once)
-docker run --rm -v "$PWD":/workspace terraform-openvpn init
+docker run --rm -ti -v "$PWD/terraform":/workspace -v "$PWD"/data/ssh:/root/.ssh -v "$PWD"/data/terraform/.terraform:/workspace/.terraform -v "$PWD"/data/terraform/.terraform.lock.hcl:/workspace/.terraform.lock.hcl terraform-openvpn init
 ```
 
 ## Deploy the VPN server, create users, delete server
@@ -72,7 +72,7 @@ docker run --rm -v "$PWD":/workspace terraform-openvpn init
 
 ```bash
 # Apply Terraform
-docker run --rm -v "$PWD":/workspace terraform-openvpn apply
+docker run --rm -v "$PWD":/workspace -v "$PWD"/data/ssh:/root/.ssh:ro terraform-openvpn apply
 ```
 
 This will:
