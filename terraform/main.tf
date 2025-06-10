@@ -30,7 +30,7 @@ resource "scaleway_instance_server" "vpn_server" {
   ip_id           = scaleway_instance_ip.vpn_ip.id
 
   root_volume {
-    size_in_gb  = 20
+    size_in_gb  = 10
     volume_type = "l_ssd"
   }
   
@@ -97,7 +97,7 @@ resource "null_resource" "provision_openvpn" {
         # Convert Windows line endings to Unix and execute
         tr -d '\r' < /workspace/scripts/update_dynhost.sh > /tmp/update_dynhost.sh && \
         chmod +x /tmp/update_dynhost.sh && \
-        sh /tmp/update_dynhost.sh '${var.dynhost_user}' '${var.dynhost_password}' '${var.dynhost_hostname}' '${scaleway_instance_server.vpn_server.public_ip}'
+        sh /tmp/update_dynhost.sh '${var.dynhost_user}' '${var.dynhost_password}' '${var.dynhost_hostname}' '${scaleway_instance_ip.vpn_ip.address}'
       else
         echo "Error: Script not found at /workspace/scripts/update_dynhost.sh"
         exit 1

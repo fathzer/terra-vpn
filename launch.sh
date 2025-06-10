@@ -7,16 +7,17 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
 TERRAFORM_SRC="$PROJECT_ROOT/terraform"
 TERRAFORM_DEST="$PROJECT_ROOT/data/terraform"
 
-# Create necessary directories
-echo "[*] Creating Terraform destination directory: $TERRAFORM_DEST"
-mkdir -p "$TERRAFORM_DEST"
 
-echo "[*] Copying Terraform files from $TERRAFORM_SRC to $TERRAFORM_DEST"
 if [ -d "$TERRAFORM_SRC" ]; then
-    # Create destination directory structure
-    mkdir -p "$TERRAFORM_DEST"
-    
+    # Create all necessary data directories
+    echo "[*] Ensuring data directories availability..."
+    mkdir -p "$PROJECT_ROOT/data"
+    mkdir -p "$PROJECT_ROOT/data/ssh"
+    mkdir -p "$PROJECT_ROOT/data/openvpn"
+
+    mkdir -p "$TERRAFORM_DEST"    
     # Recursively copy all files and directories from source to destination
+    echo "[*] Copying Terraform files from $TERRAFORM_SRC to $TERRAFORM_DEST"
     cp -rv "$TERRAFORM_SRC"/. "$TERRAFORM_DEST/" 2>/dev/null || true
     
     # Create .terraform directory if it doesn't exist

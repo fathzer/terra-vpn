@@ -31,15 +31,16 @@ This project automates the deployment of an OpenVPN server on a **Scaleway DEV1-
 
 ```text
 .
-├── Dockerfile
-├── entrypoint.sh
-├── main.tf
-├── variables.tf
-├── terraform.tfvars.example
-├── openvpn/                # Your prebuilt OpenVPN configuration and PKI
-│   └── server.conf
-├── scripts/
-│   └── update_dynhost.sh
+├── docker/                 # Docker configuration files
+│   ├── Dockerfile
+│   └── entrypoint.sh
+├── terraform/              # Terraform configuration files
+│   ├── scripts/
+│   │   └── update_dynhost.sh
+│   ├── main.tf
+│   └── variables.tf
+├── launch.sh               # Helper script for Terraform operations
+└── README.md
 ```
 
 ## ⚙️ Setup Instructions
@@ -59,11 +60,28 @@ nano terraform.tfvars
 docker build -f docker/Dockerfile -t terraform-openvpn .
 ```
 
-3. ⚙️ Init terraform
+3. 🔑 Copy your ssh keys to the `data/ssh` folder (Optional)
+
+SSH keys are required to connect to the virtual private server to install openvpn and copy your local config on it. If you already have a key pair registered on Scaleway, you can copy it to the `data/ssh` folder (there's two files: `id_rsa` and `id_rsa.pub`).
+
+If you have none, no problem, the next step will generate them for you.
+
+4. ⚙️ Init terraform
 
 ```bash
 # Run Terraform init (only once)
-docker run --rm -ti -v "$PWD/terraform":/workspace -v "$PWD"/data/ssh:/root/.ssh -v "$PWD"/data/terraform/.terraform:/workspace/.terraform -v "$PWD"/data/terraform/.terraform.lock.hcl:/workspace/.terraform.lock.hcl terraform-openvpn init
+./launch.sh init
+```
+
+After this step, a data folder will be created in the root directory with the following structure:
+
+```text
+.
+├── data/                   # Data files
+│   ├── openvpn/            # OpenVPN configuration files
+│   ├── ssh/                # SSH keys
+│   └── terraform/          # Terraform state files
+├── ...
 ```
 
 ## Deploy the VPN server, create users, delete server
