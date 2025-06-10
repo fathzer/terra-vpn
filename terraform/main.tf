@@ -12,20 +12,20 @@ provider "scaleway" {
   access_key = var.scaleway_access_key
   secret_key = var.scaleway_secret_key
   project_id = var.scaleway_project_id
-  zone       = "nl-ams-1"
-  region     = "nl-ams"
+  zone       = "pl-waw-1"
+  region     = "pl-waw"
 }
 
 # Create an instance IP for the server
 resource "scaleway_instance_ip" "vpn_ip" {
-  zone = "nl-ams-1"
+  zone = "pl-waw-1"
 }
 
 resource "scaleway_instance_server" "vpn_server" {
   name            = "openvpn"
   image           = "docker"
   type            = "DEV1-S"
-  zone            = "nl-ams-1"
+  zone            = "pl-waw-1"
   tags            = ["openvpn","docker"]
   ip_id           = scaleway_instance_ip.vpn_ip.id
 

@@ -84,47 +84,55 @@ After this step, a data folder will be created in the root directory with the fo
 ├── ...
 ```
 
+If you did not copy your ssh keys in previous step, their are generated for you and saved in `data/ssh` folder and displayed in the console. You are invited to register them on Scaleway console (console > SSH Keys).
+Once it's done, press enter to continue.
+
 ## Deploy the VPN server, create users, delete server
 
 1. 🚀 Deploy the VPN server
 
 ```bash
-# Apply Terraform
-docker run --rm -v "$PWD":/workspace -v "$PWD"/data/ssh:/root/.ssh:ro terraform-openvpn apply
+# Deploy the VPN server
+./launch.sh apply
 ```
 
 This will:
 
 - Create the VPS
-- Install OpenVPN and copy your local config
+- Install OpenVPN and copy your local config if you have provided one. If not, it will generate a new one.
 - Start the OpenVPN server
 - Update your DynHost via OVH
-//TODO: Add the ssh key generation and copy to scaleway
 
 2. 👥 Create a new user
+
+First connect to the VPS using the SSH key:
+
+```bash
+ssh -i data/ssh/id_rsa root@<SERVER_ADDRESS>
+```
+Don't forget to ignore server key, because it may change next time you deploy the server.
+
+Once connected, you can create a new user:
 
 ```bash
 # Create a new user
 # Replace <username> with the desired username
-# Replace <password> with the desired password
-docker run --rm -v "$PWD":/workspace terraform-openvpn create-user <username> <password>
+create_vpn_user <username>
 ```
 
 This will:
 
 - Create a new user in the OpenVPN server
 - Generate a new client certificate and key
-- Copy the client configuration to the `openvpn/clients` folder
+- Display the client configuration file on the screen.
+
+Copy this file to your local machine and save it as `<username>.ovpn` and add it to your OpenVPN client.
 
 3. 🗑️ Delete the VPN server
 
 ```bash
 # Destroy the VPS
-docker run --rm -v "$PWD":/workspace terraform-openvpn destroy
+./launch.sh destroy
 ```
 
-This will:
-
-- Delete the VPS
-- Remove the OpenVPN server
-- Remove the DynHost update script
+This will delete all the resources used by the OpenVPN server (VPS, IP, etc...).
