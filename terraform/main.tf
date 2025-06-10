@@ -23,10 +23,10 @@ resource "scaleway_instance_ip" "vpn_ip" {
 
 resource "scaleway_instance_server" "vpn_server" {
   name            = "openvpn"
-  image           = "ubuntu_jammy"
+  image           = "docker"
   type            = "DEV1-S"
   zone            = "nl-ams-1"
-  tags            = ["openvpn"]
+  tags            = ["openvpn","docker"]
   ip_id           = scaleway_instance_ip.vpn_ip.id
 
   root_volume {
@@ -56,9 +56,7 @@ resource "null_resource" "provision_openvpn" {
   # Installation d'OpenVPN
   provisioner "remote-exec" {
     inline = [
-      "apt-get update",
-      "apt-get install -y openvpn iptables curl",
-      "mkdir -p /etc/openvpn/server"
+      "docker pull kylemanna/openvpn"
     ]
   }
 
@@ -69,10 +67,61 @@ resource "null_resource" "provision_openvpn" {
     on_failure  = continue
   }
 
-  # Redémarre OpenVPN si la configuration a été copiée
+  # Copie du script de création d'utilisateur
+  provisioner "file" {
+    source      = "scripts/create_vpn_user.sh"
+    destination = "/usr/local/bin/create_vpn_user"
+  }
+
+  # Rendre le script exécutable
   provisioner "remote-exec" {
     inline = [
-      "[ -f /etc/openvpn/server.conf ] && systemctl enable --now openvpn-server@server.service || echo 'No server.conf found, skipping OpenVPN start'"
+      "chmod +x /usr/local/bin/create_vpn_user"
+    ]
+  }  
+
+  # Vérifie si la configuration OpenVPN existe et initialise si nécessaire
+  provisioner "remote-exec" {
+    inline = [
+      "set -e",
+      "if [ ! -d /etc/openvpn/pki ] || [ -z \"$(ls -A /etc/openvpn/pki 2>/dev/null)\" ]; then",
+      "  echo 'Initializing OpenVPN PKI and creating server certificates...'",
+      "  docker run -v /etc/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_genconfig -u udp://${var.dynhost_hostname}",
+      "  echo 'yes' | docker run -v /etc/openvpn:/etc/openvpn --rm -i kylemanna/openvpn ovpn_initpki nopass",
+      "  # Create a marker file to indicate this is a new installation",
+      "  touch /tmp/new_installation_marker",
+      "else",
+      "  echo 'Using existing OpenVPN configuration'",
+      "fi"
+    ]
+  }
+
+  # Démarre le conteneur OpenVPN avec les privilèges nécessaires
+  provisioner "remote-exec" {
+    inline = [
+      <<-EOT
+        docker run -d \
+          --name openvpn \
+          --restart unless-stopped \
+          --cap-add=NET_ADMIN \
+          --device=/dev/net/tun \
+          --sysctl net.ipv6.conf.all.disable_ipv6=0 \
+          -v /etc/openvpn:/etc/openvpn \
+          -p 1194:1194/udp \
+          kylemanna/openvpn
+      EOT
+    ]
+  }
+
+  # Clean up the marker file if this was a new installation
+  provisioner "remote-exec" {
+    inline = [
+      "if [ -f /tmp/new_installation_marker ]; then",
+      "  echo 'New OpenVPN installation detected. Configuration is available in /etc/openvpn on the server.'",
+      "  echo 'To download the configuration, you can use:'",
+      "  echo '  scp -r root@${scaleway_instance_ip.vpn_ip.address}:/etc/openvpn ./openvpn'",
+      "  rm -f /tmp/new_installation_marker",
+      "fi"
     ]
   }
 
