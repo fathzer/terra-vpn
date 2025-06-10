@@ -86,7 +86,13 @@ resource "null_resource" "provision_openvpn" {
       "set -e",
       "if [ ! -d /etc/openvpn/pki ] || [ -z \"$(ls -A /etc/openvpn/pki 2>/dev/null)\" ]; then",
       "  echo 'Initializing OpenVPN PKI and creating server certificates...'",
-      "  docker run -v /etc/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_genconfig -u udp://${var.dynhost_hostname}",
+      # Generate config with DNS leak protection
+      "  docker run -v /etc/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_genconfig \\",
+      "    -u udp://${var.dynhost_hostname} \\",
+      "    -p 'block-outside-dns' \\",
+      "    -p 'dhcp-option DNS 1.1.1.1' \\",
+      "    -p 'dhcp-option DNS 1.0.0.1' \\",
+      "    -p 'redirect-gateway def1'",
       "  echo 'yes' | docker run -v /etc/openvpn:/etc/openvpn --rm -i kylemanna/openvpn ovpn_initpki nopass",
       "  # Create a marker file to indicate this is a new installation",
       "  touch /tmp/new_installation_marker",
@@ -100,12 +106,18 @@ resource "null_resource" "provision_openvpn" {
   provisioner "remote-exec" {
     inline = [
       <<-EOT
+        # Stop and remove any existing container
+        docker rm -f openvpn 2>/dev/null || true
+        
+        # Start OpenVPN with DNS leak protection
         docker run -d \
           --name openvpn \
           --restart unless-stopped \
           --cap-add=NET_ADMIN \
           --device=/dev/net/tun \
           --sysctl net.ipv6.conf.all.disable_ipv6=0 \
+          --dns 1.1.1.1 \
+          --dns 1.0.0.1 \
           -v /etc/openvpn:/etc/openvpn \
           -p 1194:1194/udp \
           kylemanna/openvpn
