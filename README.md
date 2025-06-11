@@ -50,8 +50,8 @@ This project automates the deployment of an OpenVPN server on a **Scaleway DEV1-
 Copy and edit the variable file:
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars
+cp terraform.tfvars.example terraform/terraform.tfvars
+nano terraform/terraform.tfvars
 ```
 
 2. 🏗️ Build the Docker image //TODO or pull from dockerhub

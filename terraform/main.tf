@@ -12,25 +12,24 @@ provider "scaleway" {
   access_key = var.scaleway_access_key
   secret_key = var.scaleway_secret_key
   project_id = var.scaleway_project_id
-  zone       = "pl-waw-1"
-  region     = "pl-waw"
+  zone       = var.zone
 }
 
 # Create an instance IP for the server
 resource "scaleway_instance_ip" "vpn_ip" {
-  zone = "pl-waw-1"
+  zone = var.zone
 }
 
 resource "scaleway_instance_server" "vpn_server" {
   name            = "openvpn"
   image           = "docker"
-  type            = "DEV1-S"
-  zone            = "pl-waw-1"
+  type            = var.instance_type
+  zone            = var.zone
   tags            = ["openvpn","docker"]
   ip_id           = scaleway_instance_ip.vpn_ip.id
 
   root_volume {
-    size_in_gb  = 10
+    size_in_gb  = var.root_volume_size_gb
     volume_type = "l_ssd"
   }
   
@@ -83,45 +82,63 @@ resource "null_resource" "provision_openvpn" {
   # Vérifie si la configuration OpenVPN existe et initialise si nécessaire
   provisioner "remote-exec" {
     inline = [
-      "set -e",
-      "if [ ! -d /etc/openvpn/pki ] || [ -z \"$(ls -A /etc/openvpn/pki 2>/dev/null)\" ]; then",
-      "  echo 'Initializing OpenVPN PKI and creating server certificates...'",
-      # Generate config with DNS leak protection
-      "  docker run -v /etc/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_genconfig \\",
-      "    -u udp://${var.dynhost_hostname} \\",
-      "    -p 'block-outside-dns' \\",
-      "    -p 'dhcp-option DNS 1.1.1.1' \\",
-      "    -p 'dhcp-option DNS 1.0.0.1' \\",
-      "    -p 'redirect-gateway def1'",
-      "  echo 'yes' | docker run -v /etc/openvpn:/etc/openvpn --rm -i kylemanna/openvpn ovpn_initpki nopass",
-      "  # Create a marker file to indicate this is a new installation",
-      "  touch /tmp/new_installation_marker",
-      "else",
-      "  echo 'Using existing OpenVPN configuration'",
-      "fi"
+      <<-EOSHELL
+        #!/bin/bash
+        set -e
+        if [ ! -d /etc/openvpn/pki ] || [ -z "$(ls -A /etc/openvpn/pki 2>/dev/null)" ]; then
+          echo 'Initializing OpenVPN PKI and creating server certificates...'
+          
+          # Build DNS options
+          DNS_OPTS="-p 'block-outside-dns'"
+          for dns in ${join(" ", var.dns_servers)}; do
+            DNS_OPTS="\$DNS_OPTS -p 'dhcp-option DNS \$dns'"
+          done
+          
+          # Generate OpenVPN config
+          docker run -v /etc/openvpn:/etc/openvpn --rm -it kylemanna/openvpn ovpn_genconfig \
+            -u ${var.openvpn_protocol}://${var.dynhost_hostname}:${var.openvpn_port} \
+            $DNS_OPTS \
+            -p 'redirect-gateway def1'
+            
+          echo 'yes' | docker run -v /etc/openvpn:/etc/openvpn --rm -i kylemanna/openvpn ovpn_initpki nopass
+          
+          # Create a marker file to indicate this is a new installation
+          touch /tmp/new_installation_marker
+        else
+          echo 'Using existing OpenVPN configuration'
+        fi
+      EOSHELL
     ]
   }
 
   # Démarre le conteneur OpenVPN avec les privilèges nécessaires
   provisioner "remote-exec" {
     inline = [
-      <<-EOT
+      <<-EOSHELL
+        #!/bin/bash
+        set -e
+
         # Stop and remove any existing container
         docker rm -f openvpn 2>/dev/null || true
-        
+
+        # Build DNS options
+        DNS_OPTS=""
+        for dns in ${join(" ", var.dns_servers)}; do
+          DNS_OPTS="$DNS_OPTS --dns $dns"
+        done
+
         # Start OpenVPN with DNS leak protection
-        docker run -d \
+        eval docker run -d \
           --name openvpn \
           --restart unless-stopped \
           --cap-add=NET_ADMIN \
           --device=/dev/net/tun \
           --sysctl net.ipv6.conf.all.disable_ipv6=0 \
-          --dns 1.1.1.1 \
-          --dns 1.0.0.1 \
+          $DNS_OPTS \
           -v /etc/openvpn:/etc/openvpn \
-          -p 1194:1194/udp \
+          -p ${var.openvpn_port}:${var.openvpn_port}/${var.openvpn_protocol} \
           kylemanna/openvpn
-      EOT
+      EOSHELL
     ]
   }
 
@@ -137,21 +154,9 @@ resource "null_resource" "provision_openvpn" {
     ]
   }
 
-  # Debug: List directories and files
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo -e "\n=== /workspace/scripts directory ==="
-      ls -la /workspace/scripts 2>/dev/null || echo "/workspace/scripts not found"
-    EOT
-  }
-
   # Appel d'un script DynHost local pour mettre à jour l'IP publique sur OVH
   provisioner "local-exec" {
     command = <<-EOT
-      # Debug: Show script content
-      echo "=== Script content ==="
-      cat /workspace/scripts/update_dynhost.sh
-      
       # Convert line endings and execute
       if [ -f "/workspace/scripts/update_dynhost.sh" ]; then
         echo "=== Executing script ==="

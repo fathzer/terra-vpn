@@ -1,0 +1,19 @@
+# Scaleway configuration
+scaleway_access_key = "your-scaleway-access-key"
+scaleway_secret_key = "your-scaleway-secret-key"
+scaleway_project_id = "your-scaleway-project-id"
+
+# Instance configuration (All are optional)
+instance_type     = "DEV1-S"      # Instance type (e.g., DEV1-S, DEV1-M, GP1-XS)
+zone              = "pl-waw-1"    # Deployment zone (e.g., pl-waw-1, fr-par-1)
+root_volume_size_gb = 10          # Root volume size in GB (1-2000)
+
+# OpenVPN configuration (All are optional)
+openvpn_port     = 1194
+openvpn_protocol = "udp"  # "udp" or "tcp"
+dns_servers      = ["1.1.1.1", "1.0.0.1"]  # DNS servers to use (1-4 servers)
+
+# DynHost OVH configuration
+dynhost_user     = "your-dynhost-username"
+dynhost_password = "your-dynhost-password"
+dynhost_hostname = "vpn.yourdomain.com"  # Subdomain for the VPN
