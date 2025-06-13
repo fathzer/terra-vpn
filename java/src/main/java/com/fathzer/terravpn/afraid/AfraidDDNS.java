@@ -21,4 +21,8 @@ public class AfraidDDNS implements DynamicDNSProvider {
     public Optional<String> description() {
         return Optional.of("afraid.org's free dynamic DNS service");
     }
+    @Override
+    public String getAuthentArguments() {
+        return "'${var.afraid_token}'";
+    }
 }

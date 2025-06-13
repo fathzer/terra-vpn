@@ -21,4 +21,8 @@ public class OvhDDNS implements DynamicDNSProvider {
     public Optional<String> description() {
         return Optional.of("OVH's DynHost service for dynamic DNS updates");
     }
+    @Override
+    public String getAuthentArguments() {
+        return "'${var.dynhost_user}' '${var.dynhost_password}'";
+    }
  }

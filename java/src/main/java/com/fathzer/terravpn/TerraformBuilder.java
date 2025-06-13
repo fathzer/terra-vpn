@@ -27,14 +27,15 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
     }
 
     public void build() throws IOException {
-        Files.createDirectories(outputDir);
-        write("variables.tf", this::buildVariables);
-        write("terraform.tfvars", this::buildVariablesValues);
-        write("main.tf", this::buildMainScript);
+        Files.createDirectories(outputDir.resolve("scripts"));
+        write(outputDir.resolve("variables.tf"), this::buildVariables);
+        write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
+        write(outputDir.resolve("main.tf"), this::buildMainScript);
+        write(outputDir.resolve("scripts/dnsUpdate.sh"), this::buildDnsUpdateScript);
     }
 
-    private void write(String fileName, Consumer<Consumer<String>> lineGenerator) throws IOException {
-        try (BufferedWriter writer = Files.newBufferedWriter(outputDir.resolve(fileName))) {
+    private void write(Path path, Consumer<Consumer<String>> lineGenerator) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(path)) {
             lineGenerator.accept(l -> {
                 try {
                     writer.write(l + "\n");
@@ -141,6 +142,14 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         if (line.contains(script)) {
             return config.vpsProvider().getTerraformScript().stream();
         }
+        final String authentArguments = "%authent_arguments%";
+        if (line.contains(authentArguments)) {
+            return Stream.of(line.replace(authentArguments, config.ddnsProvider().getAuthentArguments()));
+        }
         return Stream.of(line);
+    }
+
+    public void buildDnsUpdateScript(Consumer<String> output) {
+        config.ddnsProvider().getDnsUpdateScript().forEach(output);
     }
 }

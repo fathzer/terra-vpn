@@ -127,14 +127,14 @@ resource "null_resource" "provision_openvpn" {
       set -e
 
       # Variables
-      DDNS_SCRIPT="${path.module}/scripts/ddns/${var.ddns_provider}/update.sh"
+      DDNS_SCRIPT="${path.root}/scripts/dnsUpdate.sh"
       PUBLIC_IP="${var.ip}"
       
       echo "=== Mise à jour DNS via ${var.ddns_provider} pour ${var.ddns_hostname} ==="
       
       # Vérification du script
       if [ ! -f "$DDNS_SCRIPT" ]; then
-        echo "Erreur: Script introuvable pour le fournisseur ${var.ddns_provider}"
+        echo "Erreur: Script de mise à jour DNS introuvable"
         exit 1
       fi
       
@@ -142,18 +142,11 @@ resource "null_resource" "provision_openvpn" {
       chmod +x "$DDNS_SCRIPT"
       
       # Exécution du script spécifique au fournisseur
-      case "${var.ddns_provider}" in
-        ovh)
-          "$DDNS_SCRIPT" "${var.dynhost_user}" "${var.dynhost_password}" "${var.ddns_hostname}" "$PUBLIC_IP"
-          ;;
-        afraid)
-          "$DDNS_SCRIPT" "${var.afraid_token}" "${var.ddns_hostname}" "$PUBLIC_IP"
-          ;;
-        *)
-          echo "Fournisseur DDNS non pris en charge: ${var.ddns_provider}"
-          exit 1
-          ;;
-      esac
+      echo "=== Executing script ==="
+      # Convert Windows line endings to Unix and execute
+      tr -d '\r' < $DDNS_SCRIPT > /tmp/update_dynhost.sh && \
+      chmod +x /tmp/update_dynhost.sh && \
+      sh /tmp/update_dynhost.sh %authent_arguments% '${var.ddns_hostname}' '${PUBLIC_IP}'
       
       echo "=== Mise à jour DNS terminée avec succès ==="
     EOT
