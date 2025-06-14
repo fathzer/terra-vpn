@@ -33,17 +33,17 @@ resource "null_resource" "provision_openvpn" {
   }
 
   # Copie du script de création d'utilisateur
-  provisioner "file" {
-    source      = "scripts/create_vpn_user.sh"
-    destination = "/usr/local/bin/create_vpn_user"
-  }
+  #provisioner "file" {
+  #  source      = "scripts/create_vpn_user.sh"
+  #  destination = "/usr/local/bin/create_vpn_user"
+  #}
 
   # Rendre le script exécutable
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /usr/local/bin/create_vpn_user"
-    ]
-  }  
+  #provisioner "remote-exec" {
+  #  inline = [
+  #    "chmod +x /usr/local/bin/create_vpn_user"
+  #  ]
+  #}  
 
   # Vérifie si la configuration OpenVPN existe et initialise si nécessaire
   provisioner "remote-exec" {
@@ -128,7 +128,6 @@ resource "null_resource" "provision_openvpn" {
 
       # Variables
       DDNS_SCRIPT="${path.root}/scripts/dnsUpdate.sh"
-      PUBLIC_IP="${local.vps_ip_address}"
       
       echo "=== Mise à jour DNS pour ${var.ddns_hostname} ==="
       

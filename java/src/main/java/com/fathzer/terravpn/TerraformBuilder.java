@@ -158,7 +158,7 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
     public void copySshKey(Consumer<String> output) {
         final String key = config.sshKey();
         if (key != null) {
-            output.accept(key);
+            SSHUtils.formatKey(key).forEach(output);
         }
     }
 }
