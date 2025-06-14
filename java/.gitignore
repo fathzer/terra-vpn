@@ -2,5 +2,5 @@
 .project
 .classpath
 .settings
-configExample.json
+/*.json
 terraform

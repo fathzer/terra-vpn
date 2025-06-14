@@ -1,3 +1,5 @@
+.vscode
 /.project
 terraform/terraform.tfvars
 data
+ssh
