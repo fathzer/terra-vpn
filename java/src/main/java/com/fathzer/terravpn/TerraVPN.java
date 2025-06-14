@@ -1,5 +1,7 @@
 package com.fathzer.terravpn;
 
+import static com.fathzer.terravpn.CommandParser.*;
+
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -20,27 +22,58 @@ public class TerraVPN {
         final Command command = new CommandParser().parse(args);
         if (command == null) {
             System.exit(1);
+        } else if (INIT_COMMAND.equals(command.command())) {
+            new TerraVPN(DATA_DIR.resolve(command.name())).init(command.configPath(), command.force());
+        } else if (START_COMMAND.equals(command.command())) {
+            new TerraVPN(DATA_DIR.resolve(command.name())).start();
+        } else if (STOP_COMMAND.equals(command.command())) {
+            new TerraVPN(DATA_DIR.resolve(command.name())).stop();
+        } else if (CommandParser.DELETE_COMMAND.equals(command.command())) {
+            new TerraVPN(DATA_DIR.resolve(command.name())).delete(command.force());
         }
+    }
 
-        final Path configPath = command.configPath();
+     private final Path directory;
+
+    private TerraVPN(Path path) {
+        this.directory = path;
+    }
+
+    private void init(final Path configPath, final boolean force) throws IOException {
         logger.info("Configuration file: {}", configPath.toAbsolutePath());
         final Configuration config = Configuration.fromJson(configPath);
         
         if (logger.isInfoEnabled()) {
-            logger.info("Configuration: {}", config);
             logger.info("VPS provider: {}", config.vpsProvider().name());
-            logger.info(config.ddnsProvider().name());
+            logger.info("DDNS provider: {}", config.ddnsProvider().name());
         }
 
-        final TerraformBuilder builder = new TerraformBuilder(config, DATA_DIR.resolve(command.name()));
+        final TerraformBuilder builder = new TerraformBuilder(config, directory);
+        logger.info("Writing configuration files to directory: {}", directory.toAbsolutePath());
+        /*
         System.out.println("----------------- variables.tf -----------------");
         builder.buildVariables(System.out::println);
         System.out.println("----------------- terraform.tfvars -----------------");
         builder.buildVariablesValues(System.out::println);
         System.out.println("----------------- main.tf -----------------");
-        builder.buildMainScript(System.out::println);
+        builder.buildMainScript(System.out::println); */
 
         builder.build();
+        logger.info("Finished");
     }
 
+    private void start() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'start'");
+    }
+
+    private void stop() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'stop'");
+    }
+
+    private void delete(boolean force) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+    }
 }

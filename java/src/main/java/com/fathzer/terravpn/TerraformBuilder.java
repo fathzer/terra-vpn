@@ -28,10 +28,12 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
 
     public void build() throws IOException {
         Files.createDirectories(outputDir.resolve("scripts"));
+        Files.createDirectories(outputDir.resolve(".ssh"));
         write(outputDir.resolve("variables.tf"), this::buildVariables);
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
         write(outputDir.resolve("scripts/dnsUpdate.sh"), this::buildDnsUpdateScript);
+        write(outputDir.resolve(".ssh/id_rsa"), this::copySshKey);
     }
 
     private void write(Path path, Consumer<Consumer<String>> lineGenerator) throws IOException {
@@ -151,5 +153,12 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
 
     public void buildDnsUpdateScript(Consumer<String> output) {
         config.ddnsProvider().getDnsUpdateScript().forEach(output);
+    }
+
+    public void copySshKey(Consumer<String> output) {
+        final String key = config.sshKey();
+        if (key != null) {
+            output.accept(key);
+        }
     }
 }

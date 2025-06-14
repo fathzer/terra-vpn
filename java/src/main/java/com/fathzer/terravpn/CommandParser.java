@@ -85,7 +85,10 @@ class CommandParser {
                 case INIT_COMMAND:
                     options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force initialization");
                     break;
-                case START_COMMAND, STOP_COMMAND, DELETE_COMMAND:
+                case DELETE_COMMAND:
+                    options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force deletion");
+                    break;
+                case START_COMMAND, STOP_COMMAND:
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown command: " + command);

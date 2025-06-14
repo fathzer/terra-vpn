@@ -14,8 +14,8 @@ resource "null_resource" "provision_openvpn" {
   connection {
     type        = "ssh"
     user        = "root"
-    host        = var.ip
-    private_key = file("~/.ssh/id_rsa")
+    host        = local.vps_ip_address
+    private_key = file("${path.module}/.ssh/id_rsa")
   }
 
   # Installation d'OpenVPN
@@ -114,7 +114,7 @@ resource "null_resource" "provision_openvpn" {
       "if [ -f /tmp/new_installation_marker ]; then",
       "  echo 'New OpenVPN installation detected. Configuration is available in /etc/openvpn on the server.'",
       "  echo 'To download the configuration, you can use:'",
-      "  echo '  scp -r root@${var.ip}:/etc/openvpn ./openvpn'",
+      "  echo '  scp -r root@${local.vps_ip_address}:/etc/openvpn ./openvpn'",
       "  rm -f /tmp/new_installation_marker",
       "fi"
     ]
@@ -128,9 +128,9 @@ resource "null_resource" "provision_openvpn" {
 
       # Variables
       DDNS_SCRIPT="${path.root}/scripts/dnsUpdate.sh"
-      PUBLIC_IP="${var.ip}"
+      PUBLIC_IP="${local.vps_ip_address}"
       
-      echo "=== Mise à jour DNS via ${var.ddns_provider} pour ${var.ddns_hostname} ==="
+      echo "=== Mise à jour DNS pour ${var.ddns_hostname} ==="
       
       # Vérification du script
       if [ ! -f "$DDNS_SCRIPT" ]; then
@@ -146,7 +146,7 @@ resource "null_resource" "provision_openvpn" {
       # Convert Windows line endings to Unix and execute
       tr -d '\r' < $DDNS_SCRIPT > /tmp/update_dynhost.sh && \
       chmod +x /tmp/update_dynhost.sh && \
-      sh /tmp/update_dynhost.sh %authent_arguments% '${var.ddns_hostname}' '${PUBLIC_IP}'
+      sh /tmp/update_dynhost.sh %authent_arguments% '${var.ddns_hostname}' '${local.vps_ip_address}'
       
       echo "=== Mise à jour DNS terminée avec succès ==="
     EOT

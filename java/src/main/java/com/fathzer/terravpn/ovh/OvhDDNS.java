@@ -23,6 +23,6 @@ public class OvhDDNS implements DynamicDNSProvider {
     }
     @Override
     public String getAuthentArguments() {
-        return "'${var.dynhost_user}' '${var.dynhost_password}'";
+        return "'${var.ovhDdns_user}' '${var.ovhDdns_password}'";
     }
  }

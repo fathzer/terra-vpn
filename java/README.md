@@ -1,6 +1,8 @@
 # Les commandes à implémenter
 
-## init [-f] *name* *config.json* 
+## Commandes
+
+### init [-f] *name* *config.json* 
 Initialise la configuration *name*.
 Techniquement, crée un dossier *name* et y place les fichiers terraform, ainsi qu'une copie encryptée du fichier *config.json* sans la clef ssh qu'on conserve dans un fichier.
 Si le dossier existe déjà, on affiche l'état de l'infra (initialisée, démarrée ou arrêtée), puis on quitte sauf si l'option `-f` est présente. Dans ce cas, on ne supprime pas le dossier (pour conserver l'état de Terraform) mais on recrée les fichiers Terraform et la copie de la configuration.
@@ -26,3 +28,25 @@ Arrête l'infrastructure via `terraform destroy`.
 Supprime la configuration
 
 Fait un `terraform destroy` et supprime le dossier
+
+## TIPS
+Par défaut, les données sont stockées dans un répertoire `data` dans le working directory. Vous pouvez changer ce comportement en définissant la variable système `data.dir`.
+
+## TODO
+- [ ] Implémenter la commande `init`
+    - [x] implémenter la sauvegarde de la clef ssh.
+    - [ ] implémenter la sauvegarde du fichier de configuration.
+    - [ ] implémenter la vérification de l'état avant écrasement.
+    - [ ] implémenter l'appel de `terraform init` si nécessaire.
+    - [ ] implémenter la generation des clefs ssh si nécessaire
+    - [ ] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
+    - [ ] doc sur le fichier .json.
+- [ ] Implémenter la commande `start`
+- [ ] Implémenter la commande `stop`
+- [ ] Implémenter la commande `create_user`
+- [ ] Implémenter la commande `delete`
+- [ ] Implémenter la commande `delete_user`
+- [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
+- [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
+- [ ] Implémenter une IHM web au moins pour start et stop.
+

@@ -1,20 +1,20 @@
-variable "zone" {
+variable "vps_zone" {
   type        = string
   description = "Zone VPS où déployer l'instance"
 }
 
-variable "instance_type" {
+variable "vps_instance_type" {
   type        = string
   description = "Type d'instance VPS à utiliser"
 }
 
-variable "root_volume_size_gb" {
+variable "vps_root_volume_size_gb" {
   type        = number
   description = "Taille du volume racine du VPS en Go"
   default     = 10
   
   validation {
-    condition     = var.root_volume_size_gb >= 1 && var.root_volume_size_gb <= 2000
+    condition     = var.vps_root_volume_size_gb >= 1 && var.vps_root_volume_size_gb <= 2000
     error_message = "La taille du volume racine doit être comprise entre 1 et 2000 Go."
   }
 }
