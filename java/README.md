@@ -1,4 +1,4 @@
-# Les commandes à implémenter
+# Les commandes
 
 ## Commandes
 
@@ -11,20 +11,20 @@ Si le fichier *config.json* ne contient pas de clef ssh:
   -Sinon, on crée une paire de clef et on affiche la clef publique.
 En fin de traitement, on fait un `terraform init` si besoin et un `terraform plan`.
 
-## start *name*
+### start *name*
 Démarre l'infrastructure
 
 Crée l'infrastructure via `terraform apply`.
 
-## create_user *name* *user_name*
+### create_user *name* *user_name*
 Crée un utilisateur sur le serveur.
 
-## stop *name*
+### stop *name*
 Arrête l'infrastructure
 
 Arrête l'infrastructure via `terraform destroy`.
 
-## delete *name*
+### delete *name*
 Supprime la configuration
 
 Fait un `terraform destroy` et supprime le dossier
@@ -33,6 +33,8 @@ Fait un `terraform destroy` et supprime le dossier
 Par défaut, les données sont stockées dans un répertoire `data` dans le working directory. Vous pouvez changer ce comportement en définissant la variable système `data.dir`.
 
 ## TODO
+- [x] Implémentation le fournisseur de VPS Digital Ocean.
+- [ ] Voir comment rappatrier la config VPN en local, pour la redéployer lors du start afin d'éviter la re-génération des clients (au moins les clients existants).
 - [ ] Implémenter la commande `init`
     - [x] implémenter la sauvegarde de la clef ssh.
     - [ ] implémenter la sauvegarde du fichier de configuration.

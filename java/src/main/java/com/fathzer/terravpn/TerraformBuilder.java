@@ -14,6 +14,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.fathzer.terravpn.Configuration.SSHKeys;
+
 import java.io.UncheckedIOException;
 
 public record TerraformBuilder(Configuration config, Path outputDir) {
@@ -33,7 +36,8 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
         write(outputDir.resolve("scripts/dnsUpdate.sh"), this::buildDnsUpdateScript);
-        write(outputDir.resolve(".ssh/id_rsa"), this::copySshKey);
+        write(outputDir.resolve(".ssh/id_rsa"), this::copySshPrivateKey);
+        write(outputDir.resolve(".ssh/id_rsa.pub"), this::copySshPublicKey);
     }
 
     private void write(Path path, Consumer<Consumer<String>> lineGenerator) throws IOException {
@@ -155,10 +159,17 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         config.ddnsProvider().getDnsUpdateScript().forEach(output);
     }
 
-    public void copySshKey(Consumer<String> output) {
-        final String key = config.sshKey();
-        if (key != null) {
-            SSHUtils.formatKey(key).forEach(output);
+    public void copySshPrivateKey(Consumer<String> output) {
+        final SSHKeys sshKeys = config.sshKeys();
+        if (sshKeys != null) {
+            SSHUtils.formatKey(sshKeys.privateKey()).forEach(output);
+        }
+    }
+
+    public void copySshPublicKey(Consumer<String> output) {
+        final SSHKeys sshKeys = config.sshKeys();
+        if (sshKeys != null) {
+            output.accept(sshKeys.publicKey());
         }
     }
 }

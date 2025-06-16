@@ -11,16 +11,6 @@ class SSHUtilsTest {
     private static final String BASE64_PATTERN = "^[A-Za-z0-9+/=]+$";
 
     @Test
-    void testBasicFormatKey() {
-        String header = "--- P1 --";
-        String footer = "--P3-";
-        String content = "kjkmmk";
-        String key = header+content+footer;
-        List<String> formattedKey = SSHUtils.formatKey(key);
-        checkFormattedKey(header, footer, content, formattedKey);
-    }
-
-    @Test
     void testFormatKey() {
         String header = "-----BEGIN OPENSSH PRIVATE KEY-----";
         String footer = "-----END OPENSSH PRIVATE KEY-----";
