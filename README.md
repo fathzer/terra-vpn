@@ -1,29 +1,42 @@
 # terra-vpn
 
-A terraform script to deploy an OpenVPN server to Scaleway
+A project to deploy an on demand OpenVPN server
 
-This project automates the deployment of an OpenVPN server on a **Scaleway DEV1-S instance** in **Amsterdam**, using **Terraform**, **OVH DynHost**, and a prebuilt Docker container.
+This project automates the deployment of an OpenVPN server on a selection of *Virtual Private Server* (VPS) providers and *Dynamic DNS* (DDNS) providers, using **Java** and **Terraform**, in a prebuilt Docker container.
+
+Why using it?
+
+- You don't want to pay 40$ a year for a VPN you will use once a week.
+- You have a very limited confidence in VPN dealers.
+- You don't want to deal with the complexity of setting up a VPN server from scratch yourself.
+- You are confortable with configuring VPS and DDNS accounts, or want to experiment.
+
+Why not using it?
+
+- A free VPN is not enough for you and you trust its provider.
+- You don't want to wait 5 mn to start your VPN when you need it.
+- You want a VPN for your whole family that allow you to connect the instances in different countries.
+- You want to have a ready-to-use OpenVPN server.
+- You don't want to deal with VPS and DDNS.
 
 ---
 
 ## 🚀 Features
 
+- 🖥️ Deploys a public *VPS*
+- 📡 Automatically updates your *DDNS* with the new IP address
 - 🔐 Automatically installs and configures OpenVPN using a local PKI and config folder
-- 🖥️ Deploys a public server (DEV1-S) on Scaleway
-- 📡 Automatically updates your DynHost (OVH) with the new IP address
 - 🐳 Everything runs inside a Docker container
 - 👥 Supports adding VPN users manually after deployment
+- 🗑️ Deletes the server and its resources (IP, disk, etc.) when you decide to destroy it.
 
 ---
 
 ## 🧰 Requirements
 
 - [x] Docker installed on your machine
-- [x] A Scaleway account with API keys
-- [x] An OVH domain name with DynHost credentials
-- [x] A local folder named `openvpn/` containing:
-  - `server.conf`
-  - The full PKI: `ca.crt`, `server.crt`, `server.key`, `dh.pem`, etc.
+- [x] An account on the VPS provider of your choice with API keys (the exact requirements are provider-specific)
+- [x] An account on the DDNS provider of your choice with API keys (the exact requirements are provider-specific)
 
 ---
 

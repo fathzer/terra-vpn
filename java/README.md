@@ -34,6 +34,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 
 ## TODO
 - [x] Implémentation le fournisseur de VPS Digital Ocean.
+- [ ] Tester les implémentations des fournisseurs de DDNS.
 - [ ] Voir comment rappatrier la config VPN en local, pour la redéployer lors du start afin d'éviter la re-génération des clients (au moins les clients existants).
 - [ ] Implémenter la commande `init`
     - [x] implémenter la sauvegarde de la clef ssh.

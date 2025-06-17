@@ -14,7 +14,7 @@ RESPONSE_FILE="$(mktemp)"
 trap 'rm -f "$RESPONSE_FILE"' EXIT
 
 # Build the URL
-URL="https://freedns.afraid.org/nic/update?hostname=${HOSTNAME}&myip=${IP}&v=2&token=${TOKEN}"
+URL="https://freedns.afraid.org/dynamic/update.php?${TOKEN}&address=${IP}"
 
 # Debug: Show wget command (without token)
 echo "[Afraid.org] Exécution de la commande wget..."

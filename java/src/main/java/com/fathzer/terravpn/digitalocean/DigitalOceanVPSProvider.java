@@ -27,8 +27,8 @@ public class DigitalOceanVPSProvider implements VPSProvider {
     @Override
     public Map<String, Object> getDefaultConfig() {
         return Map.of(
-            "vps_instance_type", "s-1vcpu-1gb",
-            "vps_zone", "lon1"
+            "vps_instance_type", "s-1vcpu-512mb-10gb",
+            "vps_zone", "sf03"
         );
     }
 
