@@ -13,8 +13,8 @@
 
     <properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<check-dependencies-java-version>17</check-dependencies-java-version>
-	    <maven.compiler.release>17</maven.compiler.release>
+		<check-dependencies-java-version>21</check-dependencies-java-version>
+	    <maven.compiler.release>21</maven.compiler.release>
 		<sonar.organization>fathzer</sonar.organization>
 		<customized.jar.name>terravpn</customized.jar.name>
 	</properties>
@@ -50,6 +50,12 @@
 			<artifactId>junit-jupiter-api</artifactId>
 			<version>5.13.1</version>
 		</dependency>
+		<dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.18.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 	<build>

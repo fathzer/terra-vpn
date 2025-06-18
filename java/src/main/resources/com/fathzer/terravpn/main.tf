@@ -7,6 +7,18 @@ terraform {
 
 %vps_script%
 
+# Update local file containing IP adress
+resource "null_resource" "create_and_delete_file" {
+  provisioner "local-exec" {
+    when    = create
+    command = "echo '${local.vps_ip_address}' > ip.txt"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f ip.txt"
+  }
+}
 
 resource "null_resource" "provision_openvpn" {
   depends_on = [%vps_completed%]
@@ -118,36 +130,5 @@ resource "null_resource" "provision_openvpn" {
       "  rm -f /tmp/new_installation_marker",
       "fi"
     ]
-  }
-
-  # Mise à jour DNS via le fournisseur configuré
-  provisioner "local-exec" {
-    command = <<-EOT
-      #!/bin/bash
-      set -e
-
-      # Variables
-      DDNS_SCRIPT="${path.root}/scripts/dnsUpdate.sh"
-      
-      echo "=== Mise à jour DNS pour ${var.ddns_hostname} ==="
-      
-      # Vérification du script
-      if [ ! -f "$DDNS_SCRIPT" ]; then
-        echo "Erreur: Script de mise à jour DNS introuvable"
-        exit 1
-      fi
-      
-      # Rendre le script exécutable
-      chmod +x "$DDNS_SCRIPT"
-      
-      # Exécution du script spécifique au fournisseur
-      echo "=== Executing script ==="
-      # Convert Windows line endings to Unix and execute
-      tr -d '\r' < $DDNS_SCRIPT > /tmp/update_dynhost.sh && \
-      chmod +x /tmp/update_dynhost.sh && \
-      sh /tmp/update_dynhost.sh %authent_arguments% '${var.ddns_hostname}' '${local.vps_ip_address}'
-      
-      echo "=== Mise à jour DNS terminée avec succès ==="
-    EOT
   }
 }

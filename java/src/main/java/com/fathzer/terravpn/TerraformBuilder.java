@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fathzer.terravpn.Configuration.SSHKeys;
@@ -35,7 +34,6 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         write(outputDir.resolve("variables.tf"), this::buildVariables);
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
-        write(outputDir.resolve("scripts/dnsUpdate.sh"), this::buildDnsUpdateScript);
         write(outputDir.resolve(".ssh/id_rsa"), this::copySshPrivateKey);
         write(outputDir.resolve(".ssh/id_rsa.pub"), this::copySshPublicKey);
     }
@@ -68,8 +66,6 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         }
         output.accept("");
         config.vpsProvider().getVariablesDefinition().forEach(output);
-        output.accept("");
-        config.ddnsProvider().getVariablesDefinition().forEach(output);
     }
 
     /**
@@ -79,15 +75,8 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
     public void buildVariablesValues(Consumer<String> output) {
         Map<String, Object> customConfig = config.config();
         toTerraformValues(customConfig, output);
-
         final Set<String> shouldBeIgnored = customConfig.keySet();
-        final Set<String> ddnsDefaultConfigKeys = config.ddnsProvider().getDefaultConfig().keySet();
-        final Set<String> duplicatedKeys = config.vpsProvider().getDefaultConfig().keySet().stream().filter(e -> !shouldBeIgnored.contains(e) && ddnsDefaultConfigKeys.contains(e)).collect(Collectors.toSet());
-        if (!duplicatedKeys.isEmpty()) {
-            throw new IllegalStateException("Duplicated variable default in VPS and DDNS providers, you should define it in your config file: " + duplicatedKeys);
-        }
         config.vpsProvider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
-        config.ddnsProvider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
     }
 
     private void toTerraformValues(Map<String, Object> variables, Consumer<String> output) {
@@ -148,15 +137,7 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         if (line.contains(script)) {
             return config.vpsProvider().getTerraformScript().stream();
         }
-        final String authentArguments = "%authent_arguments%";
-        if (line.contains(authentArguments)) {
-            return Stream.of(line.replace(authentArguments, config.ddnsProvider().getAuthentArguments()));
-        }
         return Stream.of(line);
-    }
-
-    public void buildDnsUpdateScript(Consumer<String> output) {
-        config.ddnsProvider().getDnsUpdateScript().forEach(output);
     }
 
     public void copySshPrivateKey(Consumer<String> output) {

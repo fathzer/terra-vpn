@@ -10,7 +10,7 @@ import com.fathzer.terravpn.VPSProvider;
  * This provider allows deploying OpenVPN servers on Scaleway's cloud infrastructure.
  */
 
-public class DigitalOceanVPSProvider implements VPSProvider {
+public class DigitalOceanVPSProvider extends VPSProvider {
     @Override
     public String id() {
         return "digitalOceanVps";

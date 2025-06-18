@@ -1,14 +1,19 @@
 package com.fathzer.terravpn.afraid;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Optional;
 
+import com.fathzer.terravpn.Configuration;
 import com.fathzer.terravpn.DynamicDNSProvider;
 
 /**
  * Afraid.org implementation of DynamicDNSProvider.
  * This provider updates DNS records using afraid.org's free DNS service.
  */
-public class AfraidDDNS implements DynamicDNSProvider {
+public class AfraidDDNS extends DynamicDNSProvider {
     @Override
     public String id() {
         return "afraidDdns";
@@ -21,8 +26,17 @@ public class AfraidDDNS implements DynamicDNSProvider {
     public Optional<String> description() {
         return Optional.of("afraid.org's free dynamic DNS service");
     }
+
     @Override
-    public String getAuthentArguments() {
-        return "'${var.afraid_token}'";
+    public void updateDns(Configuration configuration, String ip) throws IOException, InterruptedException {
+        final String token = configuration.config().get("afraid_token").toString();
+        final URI uri = URI.create("https://freedns.afraid.org/dynamic/update.php?" + token + "&address=" + ip);
+        final HttpRequest request = HttpRequest.newBuilder().uri(uri).build();
+        final HttpResponse<String> response = doRequest(request);
+        final String body = response.body();
+        // Check for "address not changed" error message or "Updated" confirmation
+        if (response.statusCode() != 200 || body == null || (!body.startsWith("Updated") && !body.matches("ERROR: Address \\d+\\.\\d+\\.\\d+\\.\\d+ has not changed\\."))) {
+            throw new IOException("Failed to update DNS: ("+response.statusCode()+") "+body);
+        }
     }
 }

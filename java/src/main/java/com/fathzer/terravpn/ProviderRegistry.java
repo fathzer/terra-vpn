@@ -1,5 +1,6 @@
 package com.fathzer.terravpn;
 
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -19,7 +20,7 @@ public final class ProviderRegistry {
         Reflections reflections = new Reflections("com.fathzer.terravpn");
         Set<Class<? extends Provider>> impls = reflections.getSubTypesOf(Provider.class);
         for (Class<? extends Provider> impl : impls) {
-            if (impl.isInterface()) {
+            if (impl.isInterface() || Modifier.isAbstract(impl.getModifiers())) {
                 continue;
             }
             try {

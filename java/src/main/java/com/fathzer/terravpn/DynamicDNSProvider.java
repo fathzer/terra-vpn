@@ -1,14 +1,20 @@
 package com.fathzer.terravpn;
 
-import java.util.List;
+import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 /**
- * Interface for Dynamic DNS provider implementations.
- * Implementations should be annotated with @DdnsProvider.
+ * Abstract Dynamic DNS provider.
  */
-public interface DynamicDNSProvider extends Provider {
-    default List<String> getDnsUpdateScript() {
-        return Provider.readResource(this, "-dnsUpdate.sh", "Dynamic DNS update shell script");
+public abstract class DynamicDNSProvider implements Provider {
+
+    public abstract void updateDns(Configuration configuration, String ip) throws IOException, InterruptedException;
+
+    protected HttpResponse<String> doRequest(final HttpRequest request) throws IOException, InterruptedException {
+        try (final HttpClient client = HttpClient.newHttpClient()) {
+            return client.send(request, HttpResponse.BodyHandlers.ofString());
+        }
     }
-    String getAuthentArguments();
 }
