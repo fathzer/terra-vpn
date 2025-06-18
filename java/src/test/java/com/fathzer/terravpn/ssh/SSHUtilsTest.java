@@ -1,4 +1,4 @@
-package com.fathzer.terravpn;
+package com.fathzer.terravpn.ssh;
 
 import static org.junit.jupiter.api.Assertions.*;
 

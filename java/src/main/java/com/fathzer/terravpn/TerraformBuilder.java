@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import com.fathzer.terravpn.Configuration.SSHKeys;
+import com.fathzer.terravpn.ssh.SSHUtils;
 
 import java.io.UncheckedIOException;
 

@@ -1,9 +1,9 @@
-package com.fathzer.terravpn;
+package com.fathzer.terravpn.ssh;
 
 import java.util.ArrayList;
 import java.util.List;
 
-class SSHUtils {
+public class SSHUtils {
     private SSHUtils() {
     }
 
@@ -16,7 +16,7 @@ class SSHUtils {
      * @param key the key in a single line (like in a json file)
      * @return the formatted key, ready to be used in ssh
      */
-    static List<String> formatKey(String key) {
+    public static List<String> formatKey(String key) {
         if (key.charAt(0) != '-' || key.charAt(key.length() - 1) != '-') {
             throw new IllegalArgumentException("Invalid key format");
         }
