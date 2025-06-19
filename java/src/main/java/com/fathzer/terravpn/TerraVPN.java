@@ -50,13 +50,6 @@ public class TerraVPN {
 
         final TerraformBuilder builder = new TerraformBuilder(config, directory);
         logger.info("Writing configuration files to directory: {}", directory.toAbsolutePath());
-        /*
-        System.out.println("----------------- variables.tf -----------------");
-        builder.buildVariables(System.out::println);
-        System.out.println("----------------- terraform.tfvars -----------------");
-        builder.buildVariablesValues(System.out::println);
-        System.out.println("----------------- main.tf -----------------");
-        builder.buildMainScript(System.out::println); */
 
         builder.build();
         logger.info("Finished");
