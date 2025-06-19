@@ -7,10 +7,6 @@ public class SSHUtils {
     private SSHUtils() {
     }
 
-    public static void createKeyPair() {
-        //TODO
-    }
-
     /**
      * Format a key to be used in ssh
      * @param key the key in a single line (like in a json file)

@@ -46,6 +46,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
     - [ ] implémenter la vérification de l'état avant écrasement.
     - [ ] implémenter l'appel de `terraform init` si nécessaire.
     - [ ] implémenter la generation des clefs ssh si nécessaire
+      - [x] implémenter un générateur de clef ssh.
     - [ ] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
     - [ ] doc sur le fichier .json.
     - [ ] prévoir quelque chose de plus safe pour les sauvegardes de la configuration (encryptage avec une clef propre à l'utilisateur passée en paramètre - variable d'environnement ou système).
