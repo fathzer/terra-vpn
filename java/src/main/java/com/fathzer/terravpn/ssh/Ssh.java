@@ -59,14 +59,14 @@ public class Ssh implements AutoCloseable {
                 channel.connect();
                 byte[] tmp=new byte[1024];
                 while(true){
-                while(in.available()>0){
-                    int i=in.read(tmp, 0, 1024);
-                    if(i<0)break;
-                    out.write(tmp, 0, i);
-                }
-                if(channel.isClosed()){
-                    return channel.getExitStatus();
-                }
+                    while(in.available()>0){
+                        int i=in.read(tmp, 0, 1024);
+                        if (i<0) break;
+                        out.write(tmp, 0, i);
+                    }
+                    if(channel.isClosed()){
+                        return channel.getExitStatus();
+                    }
                 }
             } finally {
                 channel.disconnect();
