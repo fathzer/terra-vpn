@@ -27,7 +27,7 @@ resource "null_resource" "provision_openvpn" {
     type        = "ssh"
     user        = "root"
     host        = local.vps_ip_address
-    private_key = file("${path.module}/.ssh/id_rsa")
+    private_key = file("%private_sshkey_path%")
   }
 
   # Installation d'OpenVPN

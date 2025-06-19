@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.Set;
 
 import com.fathzer.terravpn.Configuration;
 import com.fathzer.terravpn.DynamicDNSProvider;
@@ -17,6 +18,8 @@ import com.fathzer.terravpn.DynamicDNSProvider;
  * This provider updates DNS records using OVH's DynHost service.
  */
 public class OvhDDNS extends DynamicDNSProvider {
+    private static final String VAR_USER = "ovhDdns_user";
+    private static final String VAR_PASSWORD = "ovhDdns_password";
     @Override
     public String id() {
         return "ovhDdns";
@@ -32,8 +35,8 @@ public class OvhDDNS extends DynamicDNSProvider {
 
     @Override
     public void updateDns(Configuration configuration, String ip) throws IOException, InterruptedException {
-        final String user = configuration.config().get("ovhDdns_user").toString();
-        final String password = configuration.config().get("ovhDdns_password").toString();
+        final String user = configuration.config().get(VAR_USER).toString();
+        final String password = configuration.config().get(VAR_PASSWORD).toString();
 
         final String hostname = configuration.config().get("ddns_hostname").toString();
         final String url = String.format("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", hostname, ip);
@@ -53,5 +56,9 @@ public class OvhDDNS extends DynamicDNSProvider {
         final OvhDDNS ovhDDNS = new OvhDDNS();
         Configuration config = Configuration.fromJson(Paths.get("java/configScalewayOvh.json"));
         ovhDDNS.updateDns(config, "127.0.0.1");
+    }
+    @Override
+    public Set<String> getVariables() {
+        return Set.of(VAR_USER, VAR_PASSWORD);
     }
 }

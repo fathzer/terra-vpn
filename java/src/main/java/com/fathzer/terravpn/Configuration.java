@@ -10,8 +10,7 @@ import java.util.Map;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-public record Configuration(String name, VPSProvider vpsProvider, DynamicDNSProvider ddnsProvider, Map<String, Object> config, SSHKeys sshKeys) {
-    public static record SSHKeys(String privateKey, String publicKey) {}
+public record Configuration(String name, VPSProvider vpsProvider, DynamicDNSProvider ddnsProvider, Map<String, Object> config, Path sshKeysFolder) {
 
     public Configuration {
         if (name == null || name.trim().isEmpty()) {
@@ -31,13 +30,11 @@ public record Configuration(String name, VPSProvider vpsProvider, DynamicDNSProv
     public static Configuration fromJson(Path path) {
         try (InputStream is = Files.newInputStream(path)) {
             final JSONObject json = new JSONObject(new JSONTokener(is));
-            final JSONObject jsonSshKeys = json.getJSONObject("sshKeys");
-            final SSHKeys sshKeys = new SSHKeys(jsonSshKeys.getString("private"), jsonSshKeys.getString("public"));
             return new Configuration(json.getString("name"),
                 (VPSProvider)ProviderRegistry.getProvider(json.getString("vpsProvider")),
                 (DynamicDNSProvider)ProviderRegistry.getProvider(json.getString("ddnsProvider")),
                 json.getJSONObject("config").toMap(),
-                sshKeys);
+                Path.of(json.getString("sshKeysFolder")));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

@@ -12,10 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.fathzer.terravpn.Configuration.SSHKeys;
-import com.fathzer.terravpn.ssh.SSHUtils;
 
 import java.io.UncheckedIOException;
 
@@ -35,8 +33,7 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         write(outputDir.resolve("variables.tf"), this::buildVariables);
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
-        write(outputDir.resolve(".ssh/id_rsa"), this::copySshPrivateKey);
-        write(outputDir.resolve(".ssh/id_rsa.pub"), this::copySshPublicKey);
+        //TODO: write config.json
     }
 
     private void write(Path path, Consumer<Consumer<String>> lineGenerator) throws IOException {
@@ -74,7 +71,8 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
      * @param output the consumer to write the variables values to
      */
     public void buildVariablesValues(Consumer<String> output) {
-        Map<String, Object> customConfig = config.config();
+        final Set<String> excluded = config.ddnsProvider().getVariables();
+        Map<String, Object> customConfig = config.config().entrySet().stream().filter(e -> !excluded.contains(e.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         toTerraformValues(customConfig, output);
         final Set<String> shouldBeIgnored = customConfig.keySet();
         config.vpsProvider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
@@ -134,24 +132,14 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
             final int indent = line.indexOf("%");
             return config.vpsProvider().getTerraformProvider().stream().map(s -> " ".repeat(indent)+s);
         }
+        final String privateSshKeyPath = "%private_sshkey_path%";
+        if (line.contains(privateSshKeyPath)) {
+            return Stream.of(line.replace(privateSshKeyPath, config.sshKeysFolder().resolve("id_rsa").toAbsolutePath().toString()));
+        }
         final String script = "%vps_script%";
         if (line.contains(script)) {
             return config.vpsProvider().getTerraformScript().stream();
         }
         return Stream.of(line);
-    }
-
-    public void copySshPrivateKey(Consumer<String> output) {
-        final SSHKeys sshKeys = config.sshKeys();
-        if (sshKeys != null) {
-            SSHUtils.formatKey(sshKeys.privateKey()).forEach(output);
-        }
-    }
-
-    public void copySshPublicKey(Consumer<String> output) {
-        final SSHKeys sshKeys = config.sshKeys();
-        if (sshKeys != null) {
-            output.accept(sshKeys.publicKey());
-        }
     }
 }
