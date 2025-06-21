@@ -1,0 +1,20 @@
+{
+    "vps" : {
+        "providerId": "digitalOcean",
+        "config": {
+            "token": "digitalOceanToken",
+            "instance_type": "s-1vcpu-1gb",
+            "zone": "lon1"
+        }
+    },
+    "ddns": {
+        "providerId": "afraid",
+        "config": {
+            "token": "afraidToken"
+        }
+    },
+    "vpn": {
+        "hostname": "terravpn.mydomain.com",
+        "dnsServers": ["86.54.11.100","86.54.11.200"]
+    }
+}

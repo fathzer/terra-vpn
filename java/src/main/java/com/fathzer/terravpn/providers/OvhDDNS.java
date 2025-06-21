@@ -1,4 +1,4 @@
-package com.fathzer.terravpn.ovh;
+package com.fathzer.terravpn.providers;
 
 import java.io.IOException;
 import java.net.URI;
@@ -7,39 +7,35 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Base64;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 
-import com.fathzer.terravpn.Configuration;
 import com.fathzer.terravpn.DynamicDNSProvider;
+import com.fathzer.terravpn.utils.Registerable;
 
 /**
  * OVH DynHost implementation of DynamicDNSProvider.
  * This provider updates DNS records using OVH's DynHost service.
  */
+@Registerable(
+        value = "ovh",
+        classes = {DynamicDNSProvider.class}
+)
 public class OvhDDNS extends DynamicDNSProvider {
-    private static final String VAR_USER = "ovhDdns_user";
-    private static final String VAR_PASSWORD = "ovhDdns_password";
-    @Override
-    public String id() {
-        return "ovhDdns";
-    }
+    static final String VAR_USER = "user";
+    static final String VAR_PASSWORD = "password";
+    
     @Override
     public String name() {
         return "OVH DynHost";
     }
-    @Override
-    public Optional<String> description() {
-        return Optional.of("OVH's DynHost service for dynamic DNS updates");
-    }
 
     @Override
-    public void updateDns(Configuration configuration, String ip) throws IOException, InterruptedException {
-        final String user = configuration.config().get(VAR_USER).toString();
-        final String password = configuration.config().get(VAR_PASSWORD).toString();
+    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException, InterruptedException {
+        final String user = configuration.get(VAR_USER);
+        final String password = configuration.get(VAR_PASSWORD);
 
-        final String hostname = configuration.config().get("ddns_hostname").toString();
-        final String url = String.format("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", hostname, ip);
+        final String url = String.format("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", hostName, ip);
         final URI uri = URI.create(url);
         final String authent = user + ":" + password;
         final String authentBase64 = Base64.getEncoder().encodeToString(authent.getBytes(StandardCharsets.UTF_8));
@@ -54,8 +50,10 @@ public class OvhDDNS extends DynamicDNSProvider {
 
     public static void main(String[] args) throws Exception {
         final OvhDDNS ovhDDNS = new OvhDDNS();
-        Configuration config = Configuration.fromJson(Paths.get("java/configScalewayOvh.json"));
-        ovhDDNS.updateDns(config, "127.0.0.1");
+        final Map<String, String> config = Map.of(
+            VAR_USER, "astesana.net-foreign",
+            VAR_PASSWORD, "gtidh9220!00");
+        ovhDDNS.updateDns(config, "foreign.astesana.net", "127.0.0.1");
     }
     @Override
     public Set<String> getVariables() {

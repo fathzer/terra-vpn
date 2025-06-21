@@ -4,9 +4,13 @@ import static com.fathzer.terravpn.CommandParser.*;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fathzer.terravpn.json.InstanceParametersParser;
+import com.fathzer.terravpn.repository.InstanceParameters;
 
 public class TerraVPN {
     /** System property to set the data directory */
@@ -41,14 +45,14 @@ public class TerraVPN {
 
     private void init(final Path configPath, final boolean force) throws IOException {
         logger.info("Configuration file: {}", configPath.toAbsolutePath());
-        final Configuration config = Configuration.fromJson(configPath);
+        final InstanceParameters config = InstanceParametersParser.parse(configPath);
         
         if (logger.isInfoEnabled()) {
-            logger.info("VPS provider: {}", config.vpsProvider().name());
-            logger.info("DDNS provider: {}", config.ddnsProvider().name());
+            logger.info("VPS provider: {}", config.vps().provider().name());
+            logger.info("DDNS provider: {}", config.ddns().provider().name());
         }
 
-        final TerraformBuilder builder = new TerraformBuilder(config, directory);
+        final TerraformBuilder builder = new TerraformBuilder(config, directory, Paths.get("ssh/id_rsa")); //TODO: make it configurable
         logger.info("Writing configuration files to directory: {}", directory.toAbsolutePath());
 
         builder.build();

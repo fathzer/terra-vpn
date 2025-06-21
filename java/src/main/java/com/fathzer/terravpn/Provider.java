@@ -1,6 +1,6 @@
 package com.fathzer.terravpn;
 
-import java.util.Optional;
+import com.fathzer.terravpn.utils.Registerable;
 
 /**
  * Interface for providers.
@@ -8,24 +8,20 @@ import java.util.Optional;
  */
 public interface Provider {
     /**
-     * Gets the unique identifier of the provider.
-     * @return the provider identifier.
+     * Gets the ID of the provider.
+     * @return the provider ID
      */
-    String id();
+    default String id() {
+        Registerable registerable = getClass().getAnnotation(Registerable.class);
+        if (registerable == null) {
+            throw new IllegalArgumentException("Provider " + getClass().getName() + " is not registered");
+        }
+        return registerable.value();
+    }
 
     /**
      * Gets the name of the provider.
      * @return the provider name
      */
-    default String name() {
-        return id();
-    }
-
-    /**
-     * Gets the description of the provider.
-     * @return the provider description
-     */
-    default Optional<String> description() {
-        return Optional.empty();
-    }
+    String name();
 }

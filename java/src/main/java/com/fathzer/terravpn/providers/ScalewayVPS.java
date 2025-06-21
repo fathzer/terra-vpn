@@ -1,35 +1,31 @@
-package com.fathzer.terravpn.scaleway;
+package com.fathzer.terravpn.providers;
 
 import java.util.Map;
-import java.util.Optional;
 
 import com.fathzer.terravpn.VPSProvider;
+import com.fathzer.terravpn.utils.Registerable;
 
 /**
  * Scaleway VPS provider implementation.
  * This provider allows deploying OpenVPN servers on Scaleway's cloud infrastructure.
  */
 
-public class ScalewayVPSProvider extends VPSProvider {
-    @Override
-    public String id() {
-        return "scalewayVps";
-    }
+@Registerable(
+        value = "scaleway",
+        classes = {VPSProvider.class}
+)
+public class ScalewayVPS extends VPSProvider {
     @Override
     public String name() {
         return "Scaleway VPS";
-    }
-    @Override
-    public Optional<String> description() {
-        return Optional.of("Scaleway cloud infrastructure provider for VPS instances");
     }
 
     @Override
     public Map<String, Object> getDefaultConfig() {
         return Map.of(
-            "vps_instance_type", "DEV1-S",
-            "vps_zone", "pl-waw-1",
-            "vps_root_volume_size_gb", 10
+            "instance_type", "DEV1-S",
+            "zone", "pl-waw-1",
+            "root_volume_size_gb", 10
         );
     }
 

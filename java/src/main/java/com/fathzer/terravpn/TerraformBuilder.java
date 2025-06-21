@@ -15,15 +15,22 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.fathzer.terravpn.json.InstanceParametersParser;
+import com.fathzer.terravpn.repository.InstanceParameters;
+import com.fathzer.terravpn.repository.ObjectConfig;
+
 import java.io.UncheckedIOException;
 
-public record TerraformBuilder(Configuration config, Path outputDir) {
+public record TerraformBuilder(InstanceParameters config, Path outputDir, Path sshPrivateKey) {
     public TerraformBuilder {
         if (config == null) {
             throw new IllegalArgumentException("Configuration cannot be null");
         }
         if (outputDir == null) {
             throw new IllegalArgumentException("Output directory cannot be null");
+        }
+        if (sshPrivateKey == null || !Files.isRegularFile(sshPrivateKey)) {
+            throw new IllegalArgumentException("SSH private key cannot be null or not a file");
         }
     }
 
@@ -33,7 +40,7 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
         write(outputDir.resolve("variables.tf"), this::buildVariables);
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
-        //TODO: write config.json
+        InstanceParametersParser.write(outputDir.resolve("config.json"), config);
     }
 
     private void write(Path path, Consumer<Consumer<String>> lineGenerator) throws IOException {
@@ -63,7 +70,7 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
             throw new UncheckedIOException(e);
         }
         output.accept("");
-        config.vpsProvider().getVariablesDefinition().forEach(output);
+        config.vps().provider().getVariablesDefinition().forEach(output);
     }
 
     /**
@@ -71,11 +78,11 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
      * @param output the consumer to write the variables values to
      */
     public void buildVariablesValues(Consumer<String> output) {
-        final Set<String> excluded = config.ddnsProvider().getVariables();
-        Map<String, Object> customConfig = config.config().entrySet().stream().filter(e -> !excluded.contains(e.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        toTerraformValues(customConfig, output);
-        final Set<String> shouldBeIgnored = customConfig.keySet();
-        config.vpsProvider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
+        final ObjectConfig<VPSProvider> vpsConfig = config.vps();
+        final Map<String, String> vpsConfigMap = vpsConfig.config();
+        toTerraformValues(vpsConfigMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)), output);
+        final Set<String> shouldBeIgnored = vpsConfigMap.keySet();
+        vpsConfig.provider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
     }
 
     private void toTerraformValues(Map<String, Object> variables, Consumer<String> output) {
@@ -125,20 +132,20 @@ public record TerraformBuilder(Configuration config, Path outputDir) {
     private Stream<String> getScriptPart(String line) {
         final String completed = "%vps_completed%";
         if (line.contains(completed)) {
-            return Stream.of(line.replace(completed, config.vpsProvider().getCompletedResource()));
+            return Stream.of(line.replace(completed, config.vps().provider().getCompletedResource()));
         }
         final String requiredProviders = "%required_providers%";
         if (line.trim().equals(requiredProviders)) {
             final int indent = line.indexOf("%");
-            return config.vpsProvider().getTerraformProvider().stream().map(s -> " ".repeat(indent)+s);
+            return config.vps().provider().getTerraformProvider().stream().map(s -> " ".repeat(indent)+s);
         }
         final String privateSshKeyPath = "%private_sshkey_path%";
         if (line.contains(privateSshKeyPath)) {
-            return Stream.of(line.replace(privateSshKeyPath, config.sshKeysFolder().resolve("id_rsa").toAbsolutePath().toString()));
+            return Stream.of(line.replace(privateSshKeyPath, sshPrivateKey.toAbsolutePath().toString()));
         }
         final String script = "%vps_script%";
         if (line.contains(script)) {
-            return config.vpsProvider().getTerraformScript().stream();
+            return config.vps().provider().getTerraformScript().stream();
         }
         return Stream.of(line);
     }

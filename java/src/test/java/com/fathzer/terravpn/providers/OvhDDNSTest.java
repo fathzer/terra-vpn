@@ -1,4 +1,4 @@
-package com.fathzer.terravpn.afraid;
+package com.fathzer.terravpn.providers;
 
 import java.io.IOException;
 import java.net.http.HttpRequest;
@@ -11,42 +11,41 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.fathzer.terravpn.Configuration;
-
-class AfraidDDNSTest {
+class OvhDDNSTest {
 
     @Test
     void testUpdateDns() throws Exception {
         @SuppressWarnings("unchecked")
         final HttpResponse<String> response = mock(HttpResponse.class);
         final AtomicReference<HttpRequest> lastRequest = new AtomicReference<>();
-        final AfraidDDNS afraidDDNS = new AfraidDDNS() {
+        final OvhDDNS afraidDDNS = new OvhDDNS() {
             @Override
             protected HttpResponse<String> doRequest(final HttpRequest request) throws IOException, InterruptedException {
                 lastRequest.set(request);
                 return response;
             }
         };
-        Configuration config = mock(Configuration.class);
-        when(config.config()).thenReturn(Map.of("afraid_token", "token"));
+
+        Map<String, String> config = Map.of(OvhDDNS.VAR_USER, "user", OvhDDNS.VAR_PASSWORD, "password");
 
         when(response.statusCode()).thenReturn(200);
 
         // Check for "address not changed" error message
-        when(response.body()).thenReturn("ERROR: Address 127.0.0.1 has not changed.");
-        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "127.0.0.1"));
-        assertEquals("https://freedns.afraid.org/dynamic/update.php?token&address=127.0.0.1", lastRequest.get().uri().toString());
+        when(response.body()).thenReturn("nochg 127.0.0.1");
+        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "hostname", "127.0.0.1"));
+        assertEquals("https://www.ovh.com/nic/update?system=dyndns&hostname=hostname&myip=127.0.0.1", lastRequest.get().uri().toString());
+        assertEquals("Basic dXNlcjpwYXNzd29yZA==", lastRequest.get().headers().firstValue("Authorization").get());
 
         // Check address was successfully changed
-        when(response.body()).thenReturn("Updated 1 host(s) terravpn.soon.it to 127.0.0.1 in 0.006 seconds");
-        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "127.0.0.1"));
+        when(response.body()).thenReturn("good 127.0.0.1");
+        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "hostname", "127.0.0.1"));
 
         // Check for other error messages
-        when(response.body()).thenReturn("bad 127.0.0.1");
-        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "127.0.0.1"));
+        when(response.body()).thenReturn("ERROR: Some other error");
+        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "hostname", "127.0.0.1"));
 
         // Check for error codes != 200
         when(response.statusCode()).thenReturn(401);
-        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "127.0.0.1"));
+        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "hostname", "127.0.0.1"));
     }
 }

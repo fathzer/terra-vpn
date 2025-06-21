@@ -1,4 +1,4 @@
-package com.fathzer.terravpn;
+package com.fathzer.terravpn.utils;
 
 @SuppressWarnings("serial")
 public class InitializationException extends RuntimeException {

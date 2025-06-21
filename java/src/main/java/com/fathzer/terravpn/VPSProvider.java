@@ -13,7 +13,6 @@ public abstract class VPSProvider implements Provider {
 
     /**
      * Gets the definition of variables specifically required to configure the provider.
-     * <br>It is recommended that the variables have a name prefixed by the provider ID.
      * @return the variables definition required to configure the provider in .tf files Terraform format
      */
     public List<String> getVariablesDefinition() {
@@ -39,10 +38,10 @@ public abstract class VPSProvider implements Provider {
     public abstract String getCompletedResource();
 
     protected static <T extends Provider> List<String> readResource(T provider, String suffix, String type) {
-        final String path = provider.id() + suffix;
+        final String path = provider.getClass().getSimpleName() + suffix;
         final InputStream is = provider.getClass().getResourceAsStream(path);
         if (is == null) {
-            throw new IllegalStateException("Missing "+type+" file for provider " + provider.id()+" ("+path+")");
+            throw new IllegalStateException("Missing "+type+" file for provider " + provider.getClass().getSimpleName()+" ("+path+")");
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             return reader.lines().toList();

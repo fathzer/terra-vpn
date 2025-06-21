@@ -2,4 +2,4 @@
 /.project
 terraform/terraform.tfvars
 data
-ssh
+/ssh
