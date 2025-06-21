@@ -53,7 +53,7 @@ public class Ssh implements AutoCloseable {
             try {
                 ((ChannelExec)channel).setCommand(command);
                 channel.setInputStream(null);
-                ((ChannelExec)channel).setErrStream(err);
+                ((ChannelExec)channel).setErrStream(err, true);
                 
                 InputStream in=channel.getInputStream();
                 channel.connect();

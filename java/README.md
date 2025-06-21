@@ -34,7 +34,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 
 ## TODO
 - [x] Implémentation le fournisseur de VPS Digital Ocean.
-  - [x] Ouvrir les ports nécessaires (To keep this Droplet secure, the UFW firewall is enabled. All ports are BLOCKED except 22 (SSH), 2375 (Docker) and 2376 (Docker).).
+  - [ ] Ouvrir les ports nécessaires (To keep this Droplet secure, the UFW firewall is enabled. All ports are BLOCKED except 22 (SSH), 2375 (Docker) and 2376 (Docker).).
 - [x] Tester les implémentations des fournisseurs de DDNS.
   - [x] Switcher d'une implémentation sh à Java.
   - [x] Tests pour OVH provider
