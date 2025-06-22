@@ -18,7 +18,6 @@ public class Constants {
     /** The Terraform port variable name */
     public static final String PORT_VAR = "port";
         
-
     private Constants() {
     }
 }

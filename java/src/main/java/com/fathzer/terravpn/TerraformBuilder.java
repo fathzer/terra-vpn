@@ -38,7 +38,6 @@ public record TerraformBuilder(InstanceParameters config, Path outputDir, Path s
 
     public void build() throws IOException {
         Files.createDirectories(outputDir.resolve("scripts"));
-        Files.createDirectories(outputDir.resolve(".ssh"));
         write(outputDir.resolve("variables.tf"), this::buildVariables);
         write(outputDir.resolve("terraform.tfvars"), this::buildVariablesValues);
         write(outputDir.resolve("main.tf"), this::buildMainScript);
