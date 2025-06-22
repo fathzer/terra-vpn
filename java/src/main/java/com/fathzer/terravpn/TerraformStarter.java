@@ -1,7 +1,8 @@
 package com.fathzer.terravpn;
 
+import static com.fathzer.terravpn.Constants.*;
+
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -13,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 public class TerraformStarter {
     private static final Logger logger = LoggerFactory.getLogger(TerraformStarter.class);
-    private static final String OPENVPN_IMAGE = "kylemanna/openvpn";
     private final Path root;
     private final Path sshPrivateKey;
     private final Path localOpenVPNConfigPath;
@@ -50,7 +50,7 @@ public class TerraformStarter {
         logger.info("Updating DDNS");
         final String ip = getIp();
         logger.info("VPN IP: {}", ip);
-        config.ddns().provider().updateDns(config.ddns().config(), config.getHostName(), ip);
+        config.ddns().provider().updateDns(config.ddns().config(), config.hostName(), ip);
         logger.info("DDNS updated");
 
         // Do openvpn configuration
@@ -66,19 +66,18 @@ public class TerraformStarter {
             } else {
                 // TODO
                 logger.info("Initializing openvpn config");
-                /*
                 String initOpenVPNCommand = getInitOpenVPNCommand(config);
                 doSSHCommand(ssh, initOpenVPNCommand);
                 logger.info("Set the Public Key Infrastructure (can be long)");
-                final String initPKICommand = "echo 'yes' | docker run -v /etc/openvpn:/etc/openvpn --rm -i kylemanna/openvpn ovpn_initpki nopass";
-                doSSHCommand(ssh, initPKICommand); */
+                final String initPKICommand = "echo 'yes' | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_initpki nopass";
+                doSSHCommand(ssh, initPKICommand);
             }
             // Launch the server
             // First stop the server if it is running
             final String stopServerCommand = "docker rm -f openvpn || true";
             doSSHCommand(ssh, stopServerCommand);
-            final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v /etc/openvpn:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
-            final String launchServerCommand = String.format(launchServerCommandFormat, config.getPort(), config.getPort()+"/"+config.getProtocol(), OPENVPN_IMAGE);
+            final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
+            final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), config.port()+"/"+config.protocol(), OPENVPN_IMAGE);
             doSSHCommand(ssh, launchServerCommand);
         }
     }
@@ -89,14 +88,14 @@ public class TerraformStarter {
     }
 
     private String getInitOpenVPNCommand(InstanceParameters config) {
-        final StringBuilder command = new StringBuilder("docker run -v /etc/openvpn:/etc/openvpn --rm ").append(OPENVPN_IMAGE).append(" ovpn_genconfig");
-        if (config.getDnsServers()!=null && config.getDnsServers().length>0) {
+        final StringBuilder command = new StringBuilder("docker run -v ").append(OPENVPN_VPS_FOLDER).append(":/etc/openvpn --rm ").append(OPENVPN_IMAGE).append(" ovpn_genconfig");
+        if (config.dnsServers()!=null && config.dnsServers().length>0) {
             command.append(" -p 'block-outside-dns'");
-            for (String dns : config.getDnsServers()) {
+            for (String dns : config.dnsServers()) {
                 command.append(" -p 'dhcp-option DNS ").append(dns).append("'");
             }
         }
-        command.append(" -u ").append(config.getProtocol()).append("://").append(config.getHostName()).append(":").append(config.getPort());
+        command.append(" -u ").append(config.protocol()).append("://").append(config.hostName()).append(":").append(config.port());
         command.append(" -p 'redirect-gateway def1'");
         return command.toString();
     }

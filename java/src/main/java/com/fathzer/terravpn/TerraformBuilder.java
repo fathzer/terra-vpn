@@ -1,5 +1,7 @@
 package com.fathzer.terravpn;
 
+import static com.fathzer.terravpn.Constants.*;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -83,6 +85,10 @@ public record TerraformBuilder(InstanceParameters config, Path outputDir, Path s
         toTerraformValues(vpsConfigMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)), output);
         final Set<String> shouldBeIgnored = vpsConfigMap.keySet();
         vpsConfig.provider().getDefaultConfig().entrySet().stream().filter(e -> !shouldBeIgnored.contains(e.getKey())).forEach(e -> toTerraformValue(e.getKey(), e.getValue(), output));
+        if (vpsConfig.provider().isProtocolVariablesRequired()) {
+            toTerraformValue(PROTOCOL_VAR, config.protocol(), output);
+            toTerraformValue(PORT_VAR, config.port(), output);
+        }
     }
 
     private void toTerraformValues(Map<String, Object> variables, Consumer<String> output) {

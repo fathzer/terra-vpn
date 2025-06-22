@@ -1,5 +1,7 @@
 package com.fathzer.terravpn.providers;
 
+import static com.fathzer.terravpn.Constants.*;
+
 import java.util.Map;
 
 import com.fathzer.terravpn.VPSProvider;
@@ -23,13 +25,18 @@ public class DigitalOceanVPS extends VPSProvider {
     @Override
     public Map<String, Object> getDefaultConfig() {
         return Map.of(
-            "instance_type", "s-1vcpu-512mb-10gb",
-            "zone", "sf03"
+            INSTANCE_TYPE_VAR, "s-1vcpu-512mb-10gb",
+            ZONE_VAR, "sf03"
         );
     }
 
     @Override
     public String getCompletedResource() {
         return "digitalocean_droplet.vpn";
+    }
+
+    @Override
+    protected boolean isProtocolVariablesRequired() {
+        return true;
     }
 }

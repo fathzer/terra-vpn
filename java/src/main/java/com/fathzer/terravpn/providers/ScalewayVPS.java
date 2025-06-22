@@ -1,5 +1,7 @@
 package com.fathzer.terravpn.providers;
 
+import static com.fathzer.terravpn.Constants.*;
+
 import java.util.Map;
 
 import com.fathzer.terravpn.VPSProvider;
@@ -23,9 +25,9 @@ public class ScalewayVPS extends VPSProvider {
     @Override
     public Map<String, Object> getDefaultConfig() {
         return Map.of(
-            "instance_type", "DEV1-S",
-            "zone", "pl-waw-1",
-            "root_volume_size_gb", 10
+            INSTANCE_TYPE_VAR, "DEV1-S",
+            ZONE_VAR, "pl-waw-1",
+            ROOT_VOLUME_SIZE_GB_VAR, 10
         );
     }
 
