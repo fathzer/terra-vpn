@@ -69,4 +69,12 @@ public abstract class VPSProvider implements Provider {
     protected boolean isProtocolVariablesRequired() {
         return false;
     }
+
+    /**
+     * Gets the extra initialization commands that are executed after the VPS is created.
+     * @return the extra initialization commands
+     */
+    protected List<String> getExtraInitalizationCommands() {
+        return List.of();
+    }
 }

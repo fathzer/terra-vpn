@@ -5,6 +5,7 @@ import static com.fathzer.terravpn.Constants.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.fathzer.terravpn.json.InstanceParametersParser;
 import com.fathzer.terravpn.repository.InstanceParameters;
@@ -52,6 +53,11 @@ public class TerraformStarter {
         // Do openvpn configuration
         final String keyPath = sshPrivateKey.toAbsolutePath().toString();
         try (Ssh ssh = new Ssh(ip, keyPath)) {
+            List<String> extraInitalizationCommands = config.vps().provider().getExtraInitalizationCommands();
+            for (String command : extraInitalizationCommands) {
+                logger.info("Executing extra initialization command: {}", command);
+                doSSHCommand(ssh, command);
+            }
             logger.info("Getting openvpn docker image");
             doSSHCommand(ssh, "docker pull " + OPENVPN_IMAGE);
             final OpenVPNConfigManager openVPNConfigManager = new OpenVPNConfigManager(root, ip, "root", sshPrivateKey);
@@ -59,22 +65,22 @@ public class TerraformStarter {
                 logger.info("Restoring openvpn configuration");
                 openVPNConfigManager.set();
             } else {
-                logger.info("Initializing openvpn configuration");
                 String initOpenVPNCommand = getInitOpenVPNCommand(config);
+                logger.info("Initializing openvpn configuration with command{}", initOpenVPNCommand);
                 doSSHCommand(ssh, initOpenVPNCommand);
-                logger.info("Set the Public Key Infrastructure (can be long)");
                 final String initPKICommand = "echo 'yes' | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_initpki nopass";
+                logger.info("Set the Public Key Infrastructure (can be long) with command {}", initPKICommand);
                 doSSHCommand(ssh, initPKICommand);
                 logger.info("Saving openvpn configuration");
                 openVPNConfigManager.get();
             }
             // Launch the server
             // First stop the server if it is running
-            logger.info("Starting openvpn server");
             final String stopServerCommand = "docker rm -f openvpn || true";
             doSSHCommand(ssh, stopServerCommand);
             final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
             final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), config.port()+"/"+config.protocol(), OPENVPN_IMAGE);
+            logger.info("Starting openvpn server with command {}", launchServerCommand);
             doSSHCommand(ssh, launchServerCommand);
             logger.info("Openvpn server ready");
         }

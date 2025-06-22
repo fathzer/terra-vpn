@@ -2,6 +2,7 @@ package com.fathzer.terravpn.providers;
 
 import static com.fathzer.terravpn.Constants.*;
 
+import java.util.List;
 import java.util.Map;
 
 import com.fathzer.terravpn.VPSProvider;
@@ -38,5 +39,10 @@ public class DigitalOceanVPS extends VPSProvider {
     @Override
     protected boolean isProtocolVariablesRequired() {
         return true;
+    }
+
+    @Override
+    protected List<String> getExtraInitalizationCommands() {
+        return List.of("sudo ufw disable");
     }
 }
