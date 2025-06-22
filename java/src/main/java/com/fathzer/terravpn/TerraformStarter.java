@@ -16,12 +16,10 @@ public class TerraformStarter {
     private static final Logger logger = LoggerFactory.getLogger(TerraformStarter.class);
     private final Path root;
     private final Path sshPrivateKey;
-    private final Path localOpenVPNConfigPath;
 
     public TerraformStarter(Path root, Path sshPrivateKey) {
         this.root = root;
         this.sshPrivateKey = sshPrivateKey;
-        this.localOpenVPNConfigPath = root.resolve("openvpn.tar.gz");
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -47,38 +45,38 @@ public class TerraformStarter {
         }
 
         // Update the DNS
-        logger.info("Updating DDNS");
         final String ip = getIp();
-        logger.info("VPN IP: {}", ip);
+        logger.info("Updating DDNS for {} with IP {}", config.hostName(), ip);
         config.ddns().provider().updateDns(config.ddns().config(), config.hostName(), ip);
-        logger.info("DDNS updated");
 
         // Do openvpn configuration
         final String keyPath = sshPrivateKey.toAbsolutePath().toString();
         try (Ssh ssh = new Ssh(ip, keyPath)) {
             logger.info("Getting openvpn docker image");
             doSSHCommand(ssh, "docker pull " + OPENVPN_IMAGE);
-            final String localOpenVPNConfig = localOpenVPNConfigPath.toFile().getAbsolutePath();
-            if (Files.exists(localOpenVPNConfigPath)) {
-                logger.info("Uploading openvpn config");
-                ssh.upload(localOpenVPNConfig, "openvpn.tar.gz");
-                // TODO
+            final OpenVPNConfigManager openVPNConfigManager = new OpenVPNConfigManager(root, ip, "root", sshPrivateKey);
+            if (openVPNConfigManager.localFileExists()) {
+                logger.info("Restoring openvpn configuration");
+                openVPNConfigManager.set();
             } else {
-                // TODO
-                logger.info("Initializing openvpn config");
+                logger.info("Initializing openvpn configuration");
                 String initOpenVPNCommand = getInitOpenVPNCommand(config);
                 doSSHCommand(ssh, initOpenVPNCommand);
                 logger.info("Set the Public Key Infrastructure (can be long)");
                 final String initPKICommand = "echo 'yes' | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_initpki nopass";
                 doSSHCommand(ssh, initPKICommand);
+                logger.info("Saving openvpn configuration");
+                openVPNConfigManager.get();
             }
             // Launch the server
             // First stop the server if it is running
+            logger.info("Starting openvpn server");
             final String stopServerCommand = "docker rm -f openvpn || true";
             doSSHCommand(ssh, stopServerCommand);
             final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
             final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), config.port()+"/"+config.protocol(), OPENVPN_IMAGE);
             doSSHCommand(ssh, launchServerCommand);
+            logger.info("Openvpn server ready");
         }
     }
 
@@ -100,7 +98,7 @@ public class TerraformStarter {
         return command.toString();
     }
 
-    private void doSSHCommand(Ssh ssh, String command) throws IOException {
+    static void doSSHCommand(Ssh ssh, String command) throws IOException {
         logger.debug("Executing command: {}", command);
         int code = ssh.exec(command, System.out, System.err);
         logger.debug("Command finished with exit code: {}", code);

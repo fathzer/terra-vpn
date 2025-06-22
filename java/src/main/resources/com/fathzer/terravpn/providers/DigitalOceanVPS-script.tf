@@ -8,7 +8,7 @@ data "digitalocean_ssh_key" "terraform" {
 
 resource "digitalocean_droplet" "vpn" {
     image = "docker-20-04"
-    name = "my-own-vpn--${local.clean_timestamp}"
+    name = "my-own-vpn-${replace(timestamp(),":","")}"
     region = var.zone
     size = var.instance_type
     ssh_keys = [

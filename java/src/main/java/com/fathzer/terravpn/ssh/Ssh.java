@@ -2,6 +2,7 @@ package com.fathzer.terravpn.ssh;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Properties;
@@ -24,8 +25,6 @@ public class Ssh implements AutoCloseable {
             config.put("StrictHostKeyChecking", "no");
             JSch jsch = new JSch();
             jsch.addIdentity(keyPath, (String)null);
-
-
             Session session=jsch.getSession(user, host, 22);
             session.setConfig(config);
             session.connect();
@@ -67,12 +66,22 @@ public class Ssh implements AutoCloseable {
                     if(channel.isClosed()){
                         return channel.getExitStatus();
                     }
+                    pause();
                 }
             } finally {
                 channel.disconnect();
 	        }
         } catch (JSchException e) {
             throw new IOException(e);
+        }
+    }
+
+    private void pause() throws InterruptedIOException {
+        try {
+            Thread.sleep(50); // 50ms pause to reduce CPU usage
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException("Thread interrupted");
         }
     }
 

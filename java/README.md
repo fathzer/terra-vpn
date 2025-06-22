@@ -39,7 +39,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] Switcher d'une implémentation sh à Java.
   - [x] Tests pour OVH provider
 - [x] Rendre la configuration plus modulaire, les variables doivent être rattachées à leur provider, pas en tas.
-- [ ] Rappatrier la config VPN en local, pour la redéployer lors du start afin d'éviter la re-génération des clients (au moins les clients existants).
+- [x] Rappatrier la config VPN en local, pour la redéployer lors du start afin d'éviter la re-génération des clients (au moins les clients existants).
   - [x] Faire une classe permettant d'éxécuter des scripts à distance et de télécharger/téléverser des fichiers.
 - [ ] Implémenter la commande `init`
   - [x] Retirer les variables inutiles de `terraform.tfvars`
@@ -51,7 +51,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
   - [ ] doc sur le fichier .json.
   - [ ] prévoir quelque chose de plus safe pour les sauvegardes de la configuration (encryptage avec une clef propre à l'utilisateur passée en paramètre - variable d'environnement ou système).
-- [ ] Implémenter la commande `start`
+- [x] Implémenter la commande `start`
 - [ ] Implémenter la commande `stop`
 - [ ] Implémenter la commande `create_user`
 - [ ] Implémenter la commande `delete`
