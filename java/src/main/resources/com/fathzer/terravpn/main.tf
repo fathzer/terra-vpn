@@ -13,7 +13,7 @@ resource "null_resource" "provision_openvpn" {
 
   connection {
     type        = "ssh"
-    user        = "root"
+    user        = var.ssh_user
     host        = local.ip_address
     private_key = file("%private_sshkey_path%")
   }

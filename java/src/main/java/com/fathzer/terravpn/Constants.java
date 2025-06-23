@@ -13,6 +13,9 @@ public class Constants {
     /** The Terraform root volume size variable name */
     public static final String ROOT_VOLUME_SIZE_GB_VAR = "root_volume_size_gb";
 
+    /** The Terraform ssh user variable name */
+    public static final String SSH_USER_VAR = "ssh_user";
+
     /** The Terraform protocol variable name */
     public static final String PROTOCOL_VAR = "protocol";
     /** The Terraform port variable name */

@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.fathzer.terravpn.repository.ObjectConfig;
+
 public abstract class VPSProvider implements Provider {
 
     /**
@@ -76,5 +78,9 @@ public abstract class VPSProvider implements Provider {
      */
     protected List<String> getExtraInitalizationCommands() {
         return List.of();
+    }
+
+    public static String getSSHUser(ObjectConfig<VPSProvider> config) {
+        return config.config().getOrDefault(Constants.SSH_USER_VAR, "root");
     }
 }

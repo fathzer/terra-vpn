@@ -19,4 +19,8 @@ variable "root_volume_size_gb" {
   }
 }
 
-
+variable "ssh_user" {
+  type        = string
+  description = "SSH user to use to connect to the server"
+  default     = "root"
+}
