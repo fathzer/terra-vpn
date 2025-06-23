@@ -1,9 +1,8 @@
 package com.fathzer.terravpn;
 
-import static com.fathzer.terravpn.Constants.*;
-
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -59,8 +58,11 @@ public class TerraformStarter {
                 openVPNConfigManager.save();
             }
             // Start the server
+            //TODO Not sure it is a good idea to make this check here. One could want to add users before the DNS propagates...
             openVPNConfigManager.start(config);
+            logger.info("Openvpn server is ready");
         }
+        waitForDNS(config, ip);
     }
 
     private void createVPS() throws IOException, InterruptedException {
@@ -93,5 +95,32 @@ public class TerraformStarter {
         if (code != 0) {
             throw new IOException("Command " + command + " failed with exit code " + code);
         }
+    }
+
+    private void waitForDNS(InstanceParameters config, String ip) throws IOException, InterruptedException {
+        final int maxAttempts = 60; // 60 attempts * 5 seconds = 5 minutes max
+        final long delayMs = 5000; // 5 seconds between attempts
+        
+        String hostName = config.hostName();
+        logger.info("Waiting for DNS propagation of {} to point to {}", hostName, ip);
+        
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                InetAddress address = InetAddress.getByName(hostName);
+                String resolvedIp = address.getHostAddress();
+                
+                if (ip.equals(resolvedIp)) {
+                    logger.info("DNS successfully resolved to {}", ip);
+                    return;
+                }
+                logger.debug("DNS resolution attempt {}/{}: {} resolves to {}, expected {}",  attempt, maxAttempts, hostName, resolvedIp, ip);
+            } catch (Exception e) {
+                logger.debug("DNS resolution attempt {}/{} failed: {}", attempt, maxAttempts, e.getMessage());
+            }
+            if (attempt < maxAttempts) {
+                Thread.sleep(delayMs);
+            }
+        }
+        throw new IOException(String.format("Timeout waiting for DNS propagation of %s to %s", hostName, ip));
     }
 }

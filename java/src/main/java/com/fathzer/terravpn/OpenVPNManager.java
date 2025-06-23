@@ -76,7 +76,7 @@ class OpenVPNManager implements AutoCloseable {
         // Erase any previous configuration (if any)
         doSSHCommand(ssh, "sudo rm -rf " + OPENVPN_VPS_FOLDER);
         String initOpenVPNCommand = getInitOpenVPNCommand(config);
-        logger.info("Initializing openvpn configuration with command{}", initOpenVPNCommand);
+        logger.info("Initializing openvpn configuration with command {}", initOpenVPNCommand);
         doSSHCommand(ssh, initOpenVPNCommand);
         final String initPKICommand = "echo 'yes' | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_initpki nopass";
         logger.info("Set the Public Key Infrastructure (can be long) with command {}", initPKICommand);
@@ -100,10 +100,10 @@ class OpenVPNManager implements AutoCloseable {
         final String stopServerCommand = "docker rm -f openvpn || true";
         doSSHCommand(ssh, stopServerCommand);
         final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
-        final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), config.port()+"/"+config.protocol(), OPENVPN_IMAGE);
+        final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), "1194/"+config.protocol(), OPENVPN_IMAGE);
         logger.info("Starting openvpn server with command {}", launchServerCommand);
         doSSHCommand(ssh, launchServerCommand);
-        logger.info("Openvpn server ready");
+        logger.info("Openvpn server is started");
     }
 
     void addUser(String name) throws IOException {
