@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fathzer.terravpn.repository.InstanceParameters;
 import com.fathzer.terravpn.ssh.Ssh;
+import com.fathzer.terravpn.utils.ListOutputStream;
 
 class OpenVPNManager implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OpenVPNManager.class);
@@ -31,7 +32,12 @@ class OpenVPNManager implements AutoCloseable {
      * @return true if the local backup file exists
     */
     boolean hasBackup() {
-        return Files.exists(localFile);
+        if (Boolean.getBoolean("forceVPNInit")) {
+            logger.info("Force init, skipping backup check");
+            return false;
+        } else {
+            return Files.exists(localFile);
+        }
     }
 
     /** Saves the remote openvpn backup config to the local file
@@ -86,7 +92,6 @@ class OpenVPNManager implements AutoCloseable {
             }
         }
         command.append(" -u ").append(config.protocol()).append("://").append(config.hostName()).append(":").append(config.port());
-        command.append(" -p 'redirect-gateway def1'");
         return command.toString();
     }
 
@@ -99,8 +104,21 @@ class OpenVPNManager implements AutoCloseable {
         logger.info("Starting openvpn server with command {}", launchServerCommand);
         doSSHCommand(ssh, launchServerCommand);
         logger.info("Openvpn server ready");
-    }        
-        
+    }
+
+    void addUser(String name) throws IOException {
+        doSSHCommand(ssh, "docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " easyrsa build-client-full " + name + " nopass");
+    }
+
+    List<String> getUserConfigurationFile(String name) throws IOException {
+        try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
+            int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_getclient " + name, outputStream, errorStream);
+            if (code != 0) {
+                throw new IOException("Failed to get user configuration file for " + name+" with exit code " + code);
+            }
+            return outputStream.getLines();
+        }
+    }
 
     @Override
     public void close() {

@@ -87,7 +87,7 @@ public class TerraformStarter {
 
     static void doSSHCommand(Ssh ssh, String command) throws IOException {
         logger.debug("Executing command: {}", command);
-//        int code = ssh.exec(command, new LoggerOutputStream(logger, LogLevel.DEBUG), new LoggerOutputStream(logger, LogLevel.WARN));
+//        int code = ssh.exec(command, new LoggerOutputStream(logger, LogLevel.DEBUG), new LoggerOutputStream(logger, LogLevel.DEBUG));
         int code = ssh.exec(command, OutputStream.nullOutputStream(), OutputStream.nullOutputStream());
         logger.debug("Command finished with exit code: {}", code);
         if (code != 0) {

@@ -35,6 +35,9 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 ## TODO
 - [x] Implémentation le fournisseur de VPS Digital Ocean.
   - [x] Ouvrir les ports nécessaires.
+- [x] Implémentation le fournisseur de VPS Permanent.
+  - [x] Implémentation.
+  - [x] Doc.
 - [x] Tester les implémentations des fournisseurs de DDNS.
   - [x] Switcher d'une implémentation sh à Java.
   - [x] Tests pour OVH provider
@@ -54,6 +57,8 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [x] Implémenter la commande `start`
 - [ ] Implémenter la commande `stop`
 - [ ] Implémenter la commande `create_user`
+  - [x] Faire la création de l'utilisateur
+  - [ ] Refaire le backup de la configuration
 - [ ] Implémenter la commande `delete`
 - [ ] Implémenter la commande `delete_user`
 - [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
