@@ -33,11 +33,12 @@ Fait un `terraform destroy` et supprime le dossier
 Par défaut, les données sont stockées dans un répertoire `data` dans le working directory. Vous pouvez changer ce comportement en définissant la variable système `data.dir`.
 
 ## TODO
-- [x] Implémentation le fournisseur de VPS Digital Ocean.
+- [x] Implémentation du fournisseur de VPS Digital Ocean.
   - [x] Ouvrir les ports nécessaires.
-- [x] Implémentation le fournisseur de VPS Permanent.
+- [x] Implémentation d'un fournisseur de VPS "Permanent".
   - [x] Implémentation.
   - [x] Doc.
+- [ ] Implémentation du fournisseur de VPS Vultr.
 - [x] Tester les implémentations des fournisseurs de DDNS.
   - [x] Switcher d'une implémentation sh à Java.
   - [x] Tests pour OVH provider
@@ -65,4 +66,3 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
 - [ ] Implémenter une IHM web au moins pour start et stop.
 - [ ] Implémenter le fournisseur de VPS [Vultr](https://www.vultr.com/).
-- [ ] Implémenter le fournisseur de VPS [Kamatera](https://try.kamatera.com/).
