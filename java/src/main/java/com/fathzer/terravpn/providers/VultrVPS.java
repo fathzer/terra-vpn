@@ -12,7 +12,6 @@ import com.fathzer.terravpn.utils.Registerable;
  * Vultr VPS provider implementation.
  * This provider allows deploying OpenVPN servers on Vultr's cloud infrastructure.
  */
-
 @Registerable(
         value = "vultr",
         classes = {VPSProvider.class}
@@ -26,23 +25,27 @@ public class VultrVPS extends VPSProvider {
     @Override
     public Map<String, Object> getDefaultConfig() {
         return Map.of(
-            INSTANCE_TYPE_VAR, "s-1vcpu-512mb-10gb",
-            ZONE_VAR, "sf03"
+            INSTANCE_TYPE_VAR, "vc2-1c-0.5gb",
+            ZONE_VAR, "ewr"
         );
     }
 
     @Override
     public String getCompletedResource() {
-        return "vultr_vps.vpn";
+        return "vultr_instance.vpn";
     }
-/*
-    @Override
-    protected boolean isProtocolVariablesRequired() {
-        return true;
-    }
+
 
     @Override
     protected List<String> getExtraInitalizationCommands() {
-        return List.of("sudo ufw disable");
-    } */
+        // We should install Docker
+        return List.of("""
+            if docker info >/dev/null 2>&1; then
+                echo "Docker daemon is running"
+            else
+                echo "Docker is NOT running or not installed"
+                sudo apt update
+sudo apt install -y docker.io
+            fi""");
+    }
 }

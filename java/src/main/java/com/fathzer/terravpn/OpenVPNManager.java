@@ -44,7 +44,7 @@ class OpenVPNManager implements AutoCloseable {
      * @throws IOException if an error occurs
     */
     void save() throws IOException {
-        doSSHCommand(ssh, "sudo tar -czf " + OPENVPN_TAR_GZ + " --transform='s|^"+OPENVPN_VPS_FOLDER+"|openvpn|' "+OPENVPN_VPS_FOLDER);
+        doSSHCommand(ssh, "sudo tar -czf " + OPENVPN_TAR_GZ + " -C "+OPENVPN_VPS_FOLDER);
         ssh.download(OPENVPN_TAR_GZ, localFile.toString());
     }
 
@@ -54,17 +54,14 @@ class OpenVPNManager implements AutoCloseable {
     */
     void restore() throws IOException {
         ssh.upload(localFile.toString(), OPENVPN_TAR_GZ);
-        // TODO remove the ls -l
         final List<String> commands = Arrays.asList(
 			"#!/bin/bash",
 			"set -e",
-			"sudo tar -xzf " + OPENVPN_TAR_GZ,
-			"rm "+OPENVPN_TAR_GZ,
-			"ls -l",
-			"sudo rm -rf "+OPENVPN_VPS_FOLDER,
-			"sudo mv openvpn "+OPENVPN_VPS_FOLDER,
-			"ls -l "+OPENVPN_VPS_FOLDER
-		);
+			"sudo rm -rf "+ OPENVPN_VPS_FOLDER,
+            "sudo mkdir -p "+OPENVPN_VPS_FOLDER,
+			"sudo tar -xzf " + OPENVPN_TAR_GZ+ " -C "+OPENVPN_VPS_FOLDER,
+			"rm "+OPENVPN_TAR_GZ
+    		);
         ssh.exec(commands, System.out, System.err);
     }
 

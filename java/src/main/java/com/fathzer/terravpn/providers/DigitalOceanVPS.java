@@ -14,8 +14,8 @@ import com.fathzer.terravpn.utils.Registerable;
  */
 
 @Registerable(
-        value = "digitalOcean",
-        classes = {VPSProvider.class}
+    value = "digitalOcean",
+    classes = {VPSProvider.class}
 )
 public class DigitalOceanVPS extends VPSProvider {
     @Override

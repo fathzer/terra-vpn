@@ -1,6 +1,6 @@
 variable "token" {
   type        = string
-  description = "Digital Ocean API token"
+  description = "Vultr API token"
 }
 
 variable "ssh_key_name" {
