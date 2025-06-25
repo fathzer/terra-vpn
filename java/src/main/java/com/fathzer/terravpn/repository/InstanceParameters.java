@@ -24,7 +24,7 @@ public record InstanceParameters(
     }
 
     public String protocol() {
-        return (String) vpn.getOrDefault    (PROTOCOL_KEY, "udp");
+        return (String) vpn.getOrDefault(PROTOCOL_KEY, "udp");
     }
 
     public int port() {
