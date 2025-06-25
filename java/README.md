@@ -38,7 +38,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [x] Implémentation d'un fournisseur de VPS "Permanent".
   - [x] Implémentation.
   - [x] Doc.
-- [ ] Implémentation du fournisseur de VPS Vultr.
+- [x] Implémentation du fournisseur de VPS Vultr.
 - [x] Tester les implémentations des fournisseurs de DDNS.
   - [x] Switcher d'une implémentation sh à Java.
   - [x] Tests pour OVH provider
@@ -50,7 +50,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] implémenter la sauvegarde du fichier de configuration.
   - [ ] implémenter la vérification de l'état avant écrasement.
   - [ ] implémenter l'appel de `terraform init` si nécessaire.
-  - [ ] implémenter la génération des clefs ssh si nécessaire
+  - [x] implémenter la génération des clefs ssh si nécessaire
     - [x] implémenter un générateur de clef ssh.
   - [x] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
   - [ ] doc sur le fichier .json.
@@ -65,4 +65,4 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
 - [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
 - [ ] Implémenter une IHM web au moins pour start et stop.
-- [ ] Implémenter le fournisseur de VPS [Vultr](https://www.vultr.com/).
+  - Implémenter les web services

@@ -18,10 +18,10 @@ public class TerraVpnApplication {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("TerraVPN API")
-                        .version("1.0")
-                        .description("On demand VPN management API")/*
-                        .termsOfService("http://swagger.io/terms/")
-                        .license(new License().name("Apache 2.0").url("http://springdoc.org")) */);
+                .title("On Demand VPN API")
+                .version("1.0")
+                .description("On demand VPN management API")/*
+                .termsOfService("http://swagger.io/terms/")
+                .license(new License().name("Apache 2.0").url("http://springdoc.org")) */);
     }
 }

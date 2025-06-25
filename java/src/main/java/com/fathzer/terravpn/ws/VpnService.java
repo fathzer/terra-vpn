@@ -3,20 +3,40 @@ package com.fathzer.terravpn.ws;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.fathzer.terravpn.repository.InstanceParameters;
+import com.fathzer.terravpn.ws.config.ValidatedSettings;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class VpnService {
+    public static class VpnException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+		private final HttpStatus status;
+        public VpnException(HttpStatus status, String message) {
+            super(message);
+            this.status = status;
+        }
+        public HttpStatus getStatus() {
+            return status;
+        }
+    }
+
     private final Map<String, Vpn> storage = new ConcurrentHashMap<>();
 
-    public Vpn save(InstanceParameters dto) {
-        Vpn vpn = new Vpn(dto.protocol(), dto.hostName(), dto.port());
-        storage.put(vpn.id(), vpn);
+    public VpnService(ValidatedSettings validatedSettings) {
+        System.out.println(validatedSettings); //TODO
+    }
+
+    public Vpn create(String id, InstanceParameters dto) {
+        if (id == null || !id.matches("^[a-zA-Z0-9_-]+$")) {
+            throw new VpnException(HttpStatus.BAD_REQUEST, "ID must contain only letters, numbers, underscores (_) and hyphens (-)");
+        }
+        final Vpn vpn = new Vpn(id, dto.protocol(), dto.hostName(), dto.port());
+        if (storage.putIfAbsent(id, vpn) != null) throw new VpnException(HttpStatus.CONFLICT, "VPN " + id + " already exists");
         return vpn;
     }
 
@@ -24,42 +44,59 @@ public class VpnService {
         return new ArrayList<>(storage.values());
     }
 
-    public Optional<Vpn> findById(Long id) {
-        return Optional.ofNullable(storage.get(id));
+    public Vpn findVpnById(String id) {
+        final Vpn vpn = storage.get(id);
+        if (vpn == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
+        return vpn;
     }
 
-    public Optional<Vpn> update(Long id, InstanceParameters dto) {
-        Vpn existing = storage.get(id);
-        if (existing == null) return Optional.empty();
+    public Vpn update(String id, InstanceParameters dto) {
+        Vpn existing = findVpnById(id);
         //TODO
-        return Optional.of(existing);
+        return existing;
     }
 
-    public boolean delete(Long id) {
-        return storage.remove(id) != null;
+    public void delete(String id) {
+        if (storage.remove(id) == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
     }
 
-    public Optional<VPNStatus> getStatus(Long id) {
-        return Optional.ofNullable(storage.get(id)).map(Vpn::status);
+    public VPNStatus getStatus(String id) {
+        Vpn vpn = findVpnById(id);
+        return vpn.status();
     }
 
-    public Optional<VPNStatus> startVpn(Long id) {
-        Vpn vpn = storage.get(id);
-        if (vpn == null || vpn.status() == VPNStatus.RUNNING) return Optional.empty();
+    public VPNStatus startVpn(String id) {
+        Vpn vpn = findVpnById(id);
+        if (vpn.status() == VPNStatus.RUNNING) return VPNStatus.RUNNING;
 
         vpn.setStatus(VPNStatus.STARTING);
         // Simuler un démarrage (ici synchro pour simplicité)
         vpn.setStatus(VPNStatus.RUNNING);
-        return Optional.of(vpn.status());
+        return vpn.status();
     }
 
-    public Optional<VPNStatus> stopVpn(Long id) {
-        Vpn vpn = storage.get(id);
-        if (vpn == null || vpn.status() == VPNStatus.STOPPED) return Optional.empty();
+    public VPNStatus stopVpn(String id) {
+        Vpn vpn = findVpnById(id);
+        if (vpn.status() == VPNStatus.STOPPED) return VPNStatus.STOPPED;
 
         vpn.setStatus(VPNStatus.STOPPING);
         // Simuler un arrêt
         vpn.setStatus(VPNStatus.STOPPED);
-        return Optional.of(vpn.status());
+        return vpn.status();
+    }
+
+    public List<String> listUsers(String id) {
+        Vpn vpn = findVpnById(id);
+        return List.of("TODO");
+    }
+
+    public void createUser(String id, String user) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'createUser'");
+    }
+
+    public void deleteUser(String id, String user) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'deleteUser'");
     }
 }

@@ -4,17 +4,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** A VPN */
 public class Vpn {
-    private final String hostName;
-    private final String protocol;
-    private final int port;
+    private final String id;
     private VPNStatus status;
+    private String protocol;
+    private String hostName;
+    private int port;
     
     /**
      * Creates a new VPN with the given ID
      * <br>The status is set to {@link VPNStatus#STOPPED}
      * @param id the VPN ID
      */
-    public Vpn(String protocol, String hostName, int port) {
+    public Vpn(String id, String protocol, String hostName, int port) {
+        this.id = id;
         this.hostName = hostName;
         this.protocol = protocol;
         this.port = port;
@@ -27,7 +29,22 @@ public class Vpn {
      */
     @JsonProperty("id")
     public String id() {
-        return protocol+"://"+ hostName+":"+ port;
+        return id;
+    }
+
+    @JsonProperty("protocol")
+    public String protocol() {
+        return protocol;
+    }
+
+    @JsonProperty("hostName")
+    public String hostName() {
+        return hostName;
+    }
+
+    @JsonProperty("port")
+    public int port() {
+        return port;
     }
 
     /**
