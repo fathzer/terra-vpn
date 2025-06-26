@@ -44,7 +44,7 @@ class OpenVPNManager implements AutoCloseable {
      * @throws IOException if an error occurs
     */
     void save() throws IOException {
-        doSSHCommand(ssh, "sudo tar -czf " + OPENVPN_TAR_GZ + " -C "+OPENVPN_VPS_FOLDER);
+        doSSHCommand(ssh, "sudo tar -czf " + OPENVPN_TAR_GZ + " -C "+OPENVPN_VPS_FOLDER+" .");
         ssh.download(OPENVPN_TAR_GZ, localFile.toString());
     }
 

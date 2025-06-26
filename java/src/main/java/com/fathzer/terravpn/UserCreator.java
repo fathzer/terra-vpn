@@ -38,6 +38,8 @@ public class UserCreator {
             Files.write(root.resolve(username + ".ovpn"), configFile);
             logger.info("User {} added", username);
             System.out.println(String.join("\n", configFile));
+            logger.info("Saving openvpn configuration");
+            openVPNConfigManager.save();
         }
     }
 
