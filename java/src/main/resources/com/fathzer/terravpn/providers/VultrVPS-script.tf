@@ -12,7 +12,7 @@ data "vultr_ssh_key" "terraform" {
 resource "vultr_instance" "vpn" {
   plan     = var.instance_type
   region   = var.zone
-  os_id    = 477 # Debian 11 (Found no way to directly install docker)
+  image_id = "docker"
   label    = "my-own-vpn-${replace(timestamp(),":","")}"
   hostname = "vpn-instance"
   ssh_key_ids = [

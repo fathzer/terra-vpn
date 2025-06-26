@@ -2,7 +2,6 @@ package com.fathzer.terravpn.providers;
 
 import static com.fathzer.terravpn.Constants.*;
 
-import java.util.List;
 import java.util.Map;
 
 import com.fathzer.terravpn.VPSProvider;
@@ -33,19 +32,5 @@ public class VultrVPS extends VPSProvider {
     @Override
     public String getCompletedResource() {
         return "vultr_instance.vpn";
-    }
-
-
-    @Override
-    protected List<String> getExtraInitalizationCommands() {
-        // We should install Docker
-        return List.of("""
-            if docker info >/dev/null 2>&1; then
-                echo "Docker daemon is running"
-            else
-                echo "Docker is NOT running or not installed"
-                sudo apt update
-sudo apt install -y docker.io
-            fi""");
     }
 }
