@@ -40,7 +40,7 @@ public class TerraformStarter {
 
         final String keyPath = sshPrivateKey.toAbsolutePath().toString();
         final String sshUser = VPSProvider.getSSHUser(config.vps());
-        try (Ssh ssh = new Ssh(ip, sshUser, keyPath, null)) {
+        try (Ssh ssh = new Ssh.Builder(ip, keyPath).user(sshUser).build()) {
             List<String> extraInitalizationCommands = config.vps().provider().getExtraInitalizationCommands();
             for (String command : extraInitalizationCommands) {
                 logger.info("Executing extra initialization command: {}", command);

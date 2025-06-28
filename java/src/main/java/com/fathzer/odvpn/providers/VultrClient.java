@@ -2,6 +2,7 @@ package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.Builder;
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fathzer.odvpn.AbstractVPSProviderClient;
+import com.fathzer.odvpn.VPSProvider.Status;
+import com.fathzer.odvpn.VPSProvider.VPSState;
 
 class VultrClient extends AbstractVPSProviderClient {
     private static final String API_URL = "https://api.vultr.com/v2";
@@ -57,7 +60,13 @@ class VultrClient extends AbstractVPSProviderClient {
         @JsonProperty("tags") List<String> tags,
         @JsonProperty("sshkey_id") List<String> sshkeyIds) {}
 
-        /**
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record InstanceResponse(@JsonProperty("id") String id,
+        @JsonProperty("main_ip") String mainIp,
+        @JsonProperty("power_status") String powerStatus,
+        @JsonProperty("server_status") String serverStatus) {}
+
+    /**
      * Checks if an SSH key with the given name exists in the Vultr account.
      * @param keyName The name of the SSH key to check
      * @return An empty Optional if the key exists exactly once, "Unknown key" if not found,
@@ -122,7 +131,27 @@ class VultrClient extends AbstractVPSProviderClient {
         return new ServerErrorException(this.getErrorMessage(response));
     }
 
-    void deleteVPS(String id) throws IOException {
+    String create(InstanceCreationRequest request) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/instances")).POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(request))).build());
+        final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceResponse.class);
+        return instanceResponse.id;
+    }
+
+    VPSState getState(String id) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).build());
+        final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceResponse.class);
+        final Status status;
+        if (instanceResponse.powerStatus().equals("running") && instanceResponse.serverStatus().equals("ok")) {
+            status = Status.READY;
+        } else if (instanceResponse.mainIp() != null && !instanceResponse.mainIp().trim().isEmpty()) {
+            status = Status.IP_READY;
+        } else {
+            status = Status.STARTING;
+        }
+        return new VPSState(id, instanceResponse.mainIp(), status);
+    }
+
+    void delete(String id) throws IOException {
         this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).DELETE().build());
     }
 

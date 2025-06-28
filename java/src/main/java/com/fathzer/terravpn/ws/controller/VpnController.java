@@ -98,7 +98,7 @@ public class VpnController {
 
     @PostMapping("/{id}/users/{user}")
     @Operation(summary = "Create a specific VPN user", 
-               description = "Create a specific VPN user by its ID")
+               description = "Create a specific VPN user by its ID and name")
     public ResponseEntity<?> createVpnUser(@PathVariable String id, @PathVariable String user) {
         service.createUser(id, user);
 
@@ -107,8 +107,8 @@ public class VpnController {
     }
 
     @DeleteMapping("/{id}/users/{user}")
-    @Operation(summary = "Deletes a specific VPN configuration", 
-               description = "Deletes a specific VPN configuration by its ID")
+    @Operation(summary = "Deletes a specific VPN user", 
+               description = "Deletes a specific VPN user by its ID and name")
     public Void deleteVpnUser(@PathVariable String id, @PathVariable String user) {
         service.deleteUser(id, user);
         return null;

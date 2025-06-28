@@ -25,7 +25,7 @@ class OpenVPNManager implements AutoCloseable {
 
     OpenVPNManager(Path root, String address, String sshUser, Path sshPrivateKey) throws IOException {
         this.localFile = root.resolve(OPENVPN_TAR_GZ).toAbsolutePath();
-        this.ssh = new Ssh(address, sshUser, sshPrivateKey.toAbsolutePath().toString(), null);
+        this.ssh = new Ssh.Builder(address, sshPrivateKey.toAbsolutePath().toString()).user(sshUser).build();
     }
 
     /** Checks if the local backup file exists

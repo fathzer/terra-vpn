@@ -3,6 +3,7 @@ package com.fathzer.odvpn.providers;
 import static com.fathzer.terravpn.Constants.*;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +79,7 @@ public class VultrVPS extends VPSProvider {
     }
 
     @Override
-    public VPSState createVPS(InstanceParameters parameters, Consumer<String> progress) throws IOException {
+    public VPSState createVPS(InstanceParameters parameters, Consumer<Status> progress) throws IOException {
         Map<String, String> config = parameters.vps().config();
         try (VultrClient client = new VultrClient(config.get(TOKEN_VAR))) {
             String sshKeyId = client.getSSHKeyId(config.get(SSH_KEY_NAME_VAR));
@@ -86,17 +87,30 @@ public class VultrVPS extends VPSProvider {
                 config.getOrDefault(ZONE_VAR, DEFAULT_ZONE),
                 config.getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE),
                 "TODO-InstanceName",
-                "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));   
-        
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createVPS'");
+                "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));
+            final String id = client.create(request);
+            VPSState state;
+            Status status = Status.STARTING;
+            for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {
+                if (!state.status().equals(Status.IP_READY)) {
+                    status = state.status();
+                    progress.accept(status);
+                }
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException();
+                }
+            }
+            return state;
         }
     }
 
     @Override
     public void deleteVPS(InstanceParameters parameters, String id) throws IOException {
         try (VultrClient client = new VultrClient(parameters.vps().config().get(TOKEN_VAR))) {
-            client.deleteVPS(id);
+            client.delete(id);
         }
     }
 }
