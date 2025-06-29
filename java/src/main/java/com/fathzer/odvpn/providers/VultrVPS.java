@@ -1,6 +1,6 @@
 package com.fathzer.odvpn.providers;
 
-import static com.fathzer.terravpn.Constants.*;
+import static com.fathzer.odvpn.Constants.*;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.VPSProvider;
+import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
+import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.providers.VultrClient.InstanceCreationRequest;
-import com.fathzer.terravpn.repository.InstanceParameters;
-import com.fathzer.terravpn.repository.ObjectConfig;
-import com.fathzer.terravpn.utils.Registerable;
+import com.fathzer.odvpn.repository.InstanceParameters;
+import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.utils.Registerable;
 
 /**
  * Vultr VPS provider implementation.
@@ -37,7 +38,7 @@ public class VultrVPS extends VPSProvider {
     }
 
     @Override
-    public List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException, InterruptedException {
+    public List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException {
         List<String> errors = new LinkedList<>();
         String token = config.config().get(TOKEN_VAR);
         if (token == null) {
@@ -79,22 +80,21 @@ public class VultrVPS extends VPSProvider {
     }
 
     @Override
-    public VPSState createVPS(InstanceParameters parameters, Consumer<Status> progress) throws IOException {
+    public VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) throws IOException {
         Map<String, String> config = parameters.vps().config();
         try (VultrClient client = new VultrClient(config.get(TOKEN_VAR))) {
-            String sshKeyId = client.getSSHKeyId(config.get(SSH_KEY_NAME_VAR));
+            final String sshKeyId = client.getSSHKeyId(config.get(SSH_KEY_NAME_VAR));
+            final String instanceName = getInstanceName();
             InstanceCreationRequest request = new InstanceCreationRequest(
                 config.getOrDefault(ZONE_VAR, DEFAULT_ZONE),
                 config.getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE),
-                "TODO-InstanceName",
+                instanceName,
                 "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));
             final String id = client.create(request);
             VPSState state;
-            Status status = Status.STARTING;
             for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {
                 if (!state.status().equals(Status.IP_READY)) {
-                    status = state.status();
-                    progress.accept(status);
+                    progress.accept(state);
                 }
                 try {
                     Thread.sleep(5000);
@@ -104,6 +104,18 @@ public class VultrVPS extends VPSProvider {
                 }
             }
             return state;
+        }
+    }
+
+    @Override
+    public boolean exists(InstanceParameters parameters, String id) throws IOException {
+        try (VultrClient client = new VultrClient(parameters.vps().config().get(TOKEN_VAR))) {
+            return !client.getState(id).status().equals(Status.DELETING);
+        } catch (ErrorResponseException e) {
+            if (e.getStatusCode() == 404) {
+                return false;
+            }
+            throw e;
         }
     }
 

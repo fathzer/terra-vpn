@@ -11,27 +11,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 
 public abstract class AbstractVPSProviderClient implements AutoCloseable {
-    public static class ErrorResponseException extends IOException {
+    public static class ResponseException extends IOException {
         private static final long serialVersionUID = 1L;
+        private final int statusCode;
 
-		public ErrorResponseException(String message) {
+        private ResponseException(int statusCode, String message) {
             super(message);
+            this.statusCode = statusCode;
+        }
+
+        public int getStatusCode() {
+            return this.statusCode;
         }
     }
 
-    public static class AuthenticationException extends IOException {
+    public static class ErrorResponseException extends ResponseException {
         private static final long serialVersionUID = 1L;
 
-		public AuthenticationException(String message) {
-            super(message);
+		public ErrorResponseException(int statusCode, String message) {
+            super(statusCode, message);
         }
     }
 
-    public static class ServerErrorException extends IOException {
+    public static class AuthenticationException extends ResponseException {
         private static final long serialVersionUID = 1L;
 
-		public ServerErrorException(String message) {
-            super(message);
+		public AuthenticationException(int statusCode, String message) {
+            super(statusCode, message);
+        }
+    }
+
+    public static class ServerErrorException extends ResponseException {
+        private static final long serialVersionUID = 1L;
+
+		public ServerErrorException(int statusCode, String message) {
+            super(statusCode, message);
         }
     }
 
@@ -70,14 +84,14 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
     }
 
     protected AuthenticationException getAuthenticationException(HttpResponse<String> response) throws IOException {
-        return new AuthenticationException("Authentication failed");
+        return new AuthenticationException(response.statusCode(), "Authentication failed");
     }
 
     protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) throws IOException {
-        return new ErrorResponseException("Error " + response.statusCode() + ": " + response.body());
+        return new ErrorResponseException(response.statusCode(), "Error " + response.statusCode() + ": " + response.body());
     }
 
     protected ServerErrorException getServerErrorException(HttpResponse<String> response) throws IOException {
-        return new ServerErrorException("Server error " + response.statusCode() + ": " + response.body());
+        return new ServerErrorException(response.statusCode(), "Server error " + response.statusCode() + ": " + response.body());
     }
 }

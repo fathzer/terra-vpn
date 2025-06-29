@@ -1,9 +1,0 @@
-variable "token" {
-  type        = string
-  description = "Digital Ocean API token"
-}
-
-variable "ssh_key_name" {
-    type = string
-    default = "terra-vpn"
-}

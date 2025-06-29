@@ -1,6 +1,6 @@
 package com.fathzer.odvpn;
 
-import com.fathzer.terravpn.utils.Registerable;
+import com.fathzer.odvpn.utils.Registerable;
 
 /**
  * Interface for providers.

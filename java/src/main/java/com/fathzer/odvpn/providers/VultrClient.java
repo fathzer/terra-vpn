@@ -118,17 +118,17 @@ class VultrClient extends AbstractVPSProviderClient {
 
     @Override
     protected AuthenticationException getAuthenticationException(HttpResponse<String> response) throws IOException {
-        return new AuthenticationException(this.getErrorMessage(response));
+        return new AuthenticationException(response.statusCode(), this.getErrorMessage(response));
     }
 
     @Override
     protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) throws IOException {
-        return new ErrorResponseException(this.getErrorMessage(response));
+        return new ErrorResponseException(response.statusCode(), this.getErrorMessage(response));
     }
 
     @Override
     protected ServerErrorException getServerErrorException(HttpResponse<String> response) throws IOException {
-        return new ServerErrorException(this.getErrorMessage(response));
+        return new ServerErrorException(response.statusCode(), this.getErrorMessage(response));
     }
 
     String create(InstanceCreationRequest request) throws IOException {
@@ -153,13 +153,5 @@ class VultrClient extends AbstractVPSProviderClient {
 
     void delete(String id) throws IOException {
         this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).DELETE().build());
-    }
-
-    public static void main(String[] args) throws IOException {
-        try (VultrClient client = new VultrClient("CVGDI64367A6IEQ2UEH5QZBHZ5DVBQ7T5GYA")) {
-            System.out.println(client.getSSHKeyId("terra-vpn"));
-            client.checkZone("mad");
-            client.checkInstanceType("mad", "vc2-1c-1gb");
-        }
     }
 }

@@ -1,12 +1,13 @@
 package com.fathzer.odvpn;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.fathzer.terravpn.Constants;
-import com.fathzer.terravpn.repository.InstanceParameters;
-import com.fathzer.terravpn.repository.ObjectConfig;
+import com.fathzer.odvpn.repository.InstanceParameters;
+import com.fathzer.odvpn.repository.ObjectConfig;
 
 public abstract class VPSProvider implements Provider {
     /**
@@ -62,7 +63,15 @@ public abstract class VPSProvider implements Provider {
      * @param config The configuration object containing the provider-specific settings
      * @return A list of configuration errors, or an empty list if the configuration is valid
      */
-    public abstract List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException, InterruptedException;
+    public abstract List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException;
+
+    /**
+     * Checks if the VPS instance exists.
+     * @param parameters The parameters defining the VPS configuration, such as instance type, storage, and network settings
+     * @param id The unique identifier of the VPS instance in the provider's system
+     * @return true if the VPS instance exists, false otherwise
+     */
+    public abstract boolean exists(InstanceParameters parameters, String id) throws IOException;
 
     /**
      * Creates a new Virtual Private Server (VPS) instance.
@@ -72,8 +81,15 @@ public abstract class VPSProvider implements Provider {
      * @param progress A consumer that receives progress updates during the VPS creation process
      * @return A VPSState object representing the created VPS instance, containing its unique identifier and public IP address
      */
-    public abstract VPSState createVPS(InstanceParameters parameters, Consumer<Status> progress) throws IOException;
+    public abstract VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) throws IOException;
 
+    /**
+     * Creates a human-readable name for the VPS instance.
+     * @return By default, returns a name based on the current date and time prefixed with "odvpn-".
+     */
+    protected String getInstanceName() {
+        return "odvpn-" + ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmm'GMT'x"));
+    }
     /**
      * Deletes an existing Virtual Private Server (VPS) instance.
      * This method is responsible for removing a VPS instance from the provider's system.
