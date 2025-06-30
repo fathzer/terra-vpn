@@ -2,22 +2,25 @@
 
 ## Commandes
 
-### init [-f] *name* *config.json* 
+### java -jar odvpn.jar web
+Démarre l'application web. Celle-ci est une alternative aux commandes listées ci-dessous. Elle permet la gestion des VPN  grâce à des web services.
+
+### java -jar odvpn.jar init [-f] *name* *config.json* []
 Initialise la configuration *name*.
 Techniquement, on commence par vérifier la cohérence de la configuration, puis on crée un dossier *name* et y place une copie du fichier *config.json*.
 Si le dossier existe déjà on quitte en erreur, sauf si l'option `-f` est présente et que le serveur VPN n'est pas démarré. Dans ce cas, on remplace le fichier de configuration présent.
 
 
-### start *name*
+### java -jar odvpn.jar start *name*
 Créer l'infrastructure si besoin, puis démarre le serveur VPN.
 
-### create_user *name* *user_name*
+### java -jar odvpn.jar create_user *name* *user_name*
 Crée un utilisateur sur le serveur VPN.
 
-### stop *name*
+### java -jar odvpn.jar stop *name*
 Arrête le serveur VPN et supprime l'infrastructure
 
-### delete *name*
+### java -jar odvpn.jar delete *name*
 Supprime la configuration
 
 ## TIPS

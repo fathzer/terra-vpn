@@ -1,41 +1,77 @@
 package com.fathzer.odvpn.ws.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ws.Vpn;
 import com.fathzer.odvpn.ws.VpnService;
+import com.fathzer.odvpn.ws.VpnService.VpnException;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("api/vpns")
 public class VpnController {
     private final VpnService service;
+    private final ObjectMapper objectMapper;
 
-    public VpnController(VpnService service) {
+    public VpnController(VpnService service, ObjectMapper objectMapper) {
         this.service = service;
+        this.objectMapper = objectMapper;
     }
 
-    @PostMapping("/{id}")
+    @PostMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Creates a new VPN configuration", 
-               description = "Creates a new VPN configuration without starting it")
-    public ResponseEntity<?> createVpn(@PathVariable String id, @RequestBody InstanceParameters vpnDto) {
+               description = "Creates a new VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.")
+    public ResponseEntity<?> createVpn(
+            @PathVariable String id,
+            @RequestParam("config")
+            @Parameter(description = "VPN configuration")
+            String configJson,
+            @RequestPart(value = "file", required = false)
+            @Parameter(description = "Optional tar.gz file containing additional configuration")
+            MultipartFile file) {
+
+        InstanceParameters vpnDto;
+        try {
+            vpnDto = objectMapper.readValue(configJson, InstanceParameters.class);
+        } catch (Exception e) {
+            throw new VpnException(HttpStatus.BAD_REQUEST, "Invalid JSON in config: " + e.getMessage());
+        }
         Vpn saved = service.create(id, vpnDto);
-        URI location = URI.create("/vpns/" + saved.id());
+        
+        if (file != null && !file.isEmpty()) {
+            String contentType = file.getContentType();
+            String originalFilename = file.getOriginalFilename();
+            boolean isValidContentType = "application/gzip".equals(contentType) || "application/x-gzip".equals(contentType);
+            boolean isValidExtension = originalFilename != null && originalFilename.toLowerCase().endsWith(".tar.gz");
+            
+            if (!isValidContentType && !isValidExtension) {
+                throw new VpnException(HttpStatus.BAD_REQUEST, "Uploaded file must be a tar.gz file");
+            }
+        }
+        
+        URI location = URI.create("/vpns/" + id);
         return ResponseEntity.created(location).body(saved);
     }
 

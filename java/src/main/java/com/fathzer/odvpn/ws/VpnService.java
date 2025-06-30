@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.ws.config.ValidatedSettings;
+import com.fathzer.odvpn.repository.VPNRepositorySettings;
 
 @Service
 public class VpnService {
@@ -27,13 +27,13 @@ public class VpnService {
 
     private final Map<String, Vpn> storage = new ConcurrentHashMap<>();
 
-    public VpnService(ValidatedSettings validatedSettings) {
+    public VpnService(VPNRepositorySettings validatedSettings) {
         System.out.println(validatedSettings); //TODO
     }
 
     public Vpn create(String id, InstanceParameters dto) {
-        if (id == null || !id.matches("^[a-zA-Z0-9_-]+$")) {
-            throw new VpnException(HttpStatus.BAD_REQUEST, "ID must contain only letters, numbers, underscores (_) and hyphens (-)");
+        if (id == null || !id.matches("^[a-zA-Z0-9_.-]+$")) {
+            throw new VpnException(HttpStatus.BAD_REQUEST, "ID must contain only letters, numbers, underscores (_), hyphens (-), and periods (.)");
         }
         final Vpn vpn = new Vpn(id, dto.protocol(), dto.hostName(), dto.port());
         if (storage.putIfAbsent(id, vpn) != null) throw new VpnException(HttpStatus.CONFLICT, "VPN " + id + " already exists");
