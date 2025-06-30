@@ -2,6 +2,11 @@ package com.fathzer.odvpn;
 
 import static com.fathzer.odvpn.CommandParser.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+import java.io.IOException;
+import java.nio.file.Paths;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -15,60 +20,81 @@ class CommandParserTest {
     }
 
     @Test
-    void testInitCommand() {
-        String[] args = {INIT_COMMAND, "my-vpn", "config.json"};
-        Command command = PARSER.parse(args);
-        assertEquals("my-vpn", command.name());
-        assertEquals("config.json", command.configPath().getFileName().toString());
-        assertFalse(command.force());
-        assertEquals(INIT_COMMAND, command.command());
-        String[] argsWithForce = {INIT_COMMAND, "-f", "my-vpn", "config.json"};
-        Command forcedCommand = PARSER.parse(argsWithForce);
-        assertTrue(forcedCommand.force());
+    void testInitCommand() throws IOException {
+        final ODVpn odvpn = mock(ODVpn.class);
+        
+        // Test init command without force
+        String[] args = {Command.INIT.name, "my-vpn", "config.json"};
+        IORunnable command = PARSER.parse(args, odvpn);
+        assertNotNull(command);
+        command.run();
+        verify(odvpn).init("my-vpn", Paths.get("config.json"), null, false);
+        
+        // Test init command with force
+        String[] argsWithForce = {Command.INIT.name, "-f", "my-vpn", "config.json"};
+        command = PARSER.parse(argsWithForce, odvpn);
+        assertNotNull(command);
+        command.run();
+        verify(odvpn).init("my-vpn", Paths.get("config.json"), null, true);
+
+        // Test init command with openvpn config file and force
+        String[] argsWithOpenVpnConfig = {Command.INIT.name, "-f", "my-vpn", "config.json", "configovpn.tar.gz"};
+        command = PARSER.parse(argsWithOpenVpnConfig, odvpn);
+        assertNotNull(command);
+        command.run();
+        verify(odvpn).init("my-vpn", Paths.get("config.json"), Paths.get("configovpn.tar.gz"), true);
     }
 
     @Test
-    void testStartCommand() {
-        String[] args = {START_COMMAND, "my-vpn"};
-        Command command = PARSER.parse(args);
-        assertEquals(START_COMMAND, command.command());
-        assertNull(command.configPath());
+    void testStartCommand() throws IOException {
+        final ODVpn odvpn = mock(ODVpn.class);
+        String[] args = {Command.START.name, "my-vpn"};
+        IORunnable command = PARSER.parse(args, odvpn);
+        assertNotNull(command);
+        command.run();
+        verify(odvpn).start("my-vpn");
     }
 
     @Test
-    void testDeleteCommand() {
-        String[] args = {DELETE_COMMAND, "my-vpn"};
-        Command command = PARSER.parse(args);
-        assertEquals(DELETE_COMMAND, command.command());
+    void testDeleteCommand() throws IOException {
+        final ODVpn odvpn = mock(ODVpn.class);
+        String[] args = {Command.DELETE.name, "my-vpn"};
+        IORunnable command = PARSER.parse(args, odvpn);
+        assertNotNull(command);
+        command.run();
+        verify(odvpn).delete("my-vpn", false);
     }
 
     @Test
     void testInvalidCommand() {
+        final ODVpn odvpn = mock(ODVpn.class);
         String[] invalidArgs = {"invalid", "my-vpn"};
-        assertNull(PARSER.parse(invalidArgs));
+        assertNull(PARSER.parse(invalidArgs, odvpn));
         String[] missingCommandArgs = {"my-vpn"};
-        assertNull(PARSER.parse(missingCommandArgs));
-        String[] tooManyArgs = {INIT_COMMAND, "-f", "my-vpn", "config.json", "extra"};
-        assertNull(PARSER.parse(tooManyArgs));
-        String[] tooManyArgs2 = {INIT_COMMAND, "my-vpn", "config.json", "extra"};
-        assertNull(PARSER.parse(tooManyArgs2));
-        String[] invertedArgs = {INIT_COMMAND, "my-vpn", "-f", "config.json",};
-        assertNull(PARSER.parse(invertedArgs));
+        assertNull(PARSER.parse(missingCommandArgs, odvpn));
+        String[] tooManyArgs = {Command.INIT.name, "-f", "my-vpn", "config.json", "configovpn.tar.gz", "extra"};
+        assertNull(PARSER.parse(tooManyArgs, odvpn));
+        String[] tooManyArgs2 = {Command.INIT.name, "my-vpn", "config.json", "configovpn.tar.gz", "extra"};
+        assertNull(PARSER.parse(tooManyArgs2, odvpn));
+        String[] invertedArgs = {Command.INIT.name, "my-vpn", "-f", "config.json"};
+        assertNull(PARSER.parse(invertedArgs, odvpn));
     }
 
     @Test
     void testMissingName() {
-        String[] initArgs = {INIT_COMMAND, "config.json"};
-        assertNull(PARSER.parse(initArgs));
-        String[] deleteArgs = {DELETE_COMMAND};
-        assertNull(PARSER.parse(deleteArgs));
+        final ODVpn odvpn = mock(ODVpn.class);
+        String[] initArgs = {Command.INIT.name, "config.json"};
+        assertNull(PARSER.parse(initArgs, odvpn));
+        String[] deleteArgs = {Command.DELETE.name};
+        assertNull(PARSER.parse(deleteArgs, odvpn));
     }
 
     @Test
     void testExtraOption() {
-        String[] initArgs = {INIT_COMMAND, "my-vpn", "-x", "extra.json"};
-        assertNull(PARSER.parse(initArgs));
-        String[] startArgs = {START_COMMAND, "my-vpn", "-x"};
-        assertNull(PARSER.parse(startArgs));
+        final ODVpn odvpn = mock(ODVpn.class);
+        String[] initArgs = {Command.INIT.name, "my-vpn", "-x", "extra.json"};
+        assertNull(PARSER.parse(initArgs, odvpn));
+        String[] startArgs = {Command.START.name, "my-vpn", "-x"};
+        assertNull(PARSER.parse(startArgs, odvpn));
     }
 }

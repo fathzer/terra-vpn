@@ -1,9 +1,12 @@
 package com.fathzer.odvpn;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -13,50 +16,105 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.LoggerFactory;
 
 class CommandParser {
-    private static final String COMMAND_PREFIX = "terravpn";
+    private static final String COMMAND_PREFIX = "java -jar odvpn.jar";
     private static final String OPT_FORCE = "f";
     private static final String OPT_FORCE_LONG = "force";
 
-    static final String INIT_COMMAND = "init";
-    static final String START_COMMAND = "start";
-    static final String STOP_COMMAND = "stop";
-    static final String DELETE_COMMAND = "delete";
+    @FunctionalInterface
+    static interface IOConsumer {
+        void accept(ODVpn target, CommandLine line) throws IOException;
+    }
+
+    @FunctionalInterface
+    static interface IORunnable {
+        void run() throws IOException;
+    }
+
+    enum Command {
+        WEB("web", "Launch the web application", "", new Options(), (o, l) -> o.web()),
+        INIT("init", "Initialize a new VPN server configuration", "name configFile [openVPNConfigFile]", getInitOptions(), (o, l) -> o.init(l.getArgList().get(0), Path.of(l.getArgList().get(1)), l.getArgList().size() > 2 ? Path.of(l.getArgList().get(2)) : null, l.hasOption(OPT_FORCE))),
+        START("start", "Start the VPN server", "name", new Options(), (o, l) -> o.start(l.getArgList().get(0))),
+        STOP("stop", "Stop the VPN server", "name", new Options(), (o, l) -> o.stop(l.getArgList().get(0))),
+        DELETE("delete", "Delete the VPN server configuration", "name", getDeleteOptions(), (o, l) -> o.delete(l.getArgList().get(0), l.hasOption(OPT_FORCE)));
+
+        private static final Map<String, Command> COMMANDS = new HashMap<>();
+        static {
+            for (Command command : values()) {
+                COMMANDS.put(command.name, command);
+            }
+        }
+        final String name;
+        private final String description;
+        private final String argsDescription;
+        private final Options options;
+        private final IOConsumer action;
+
+        private Command(String name, String description, String argsDescription, Options options, IOConsumer action) {
+            this.name = name;
+            this.description = description;
+            this.argsDescription = argsDescription;
+            this.options = options;
+            this.action = action;
+        }
+
+        private void checkArguments(CommandLine line) {
+            final int min;
+            final int max;
+            if (argsDescription.isEmpty()) {
+                min = 0;
+                max = 0;
+            } else {
+                final String[] args = argsDescription.split(" ");
+                min = (int) Arrays.stream(args).filter(a -> !a.startsWith("[")).count();
+                max = args.length;
+            }
+            final int count = line.getArgList().size();
+            if (count < min || count > max) {
+                throw new IllegalArgumentException("Invalid number of arguments");
+            }
+        }
+
+        static Command fromName(String name) {
+            return COMMANDS.get(name);
+        }
+
+        private static Options getInitOptions() {
+            final Options options = new Options();
+            options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force initialization");
+            return options;
+        }
+
+        private static Options getDeleteOptions() {
+            final Options options = new Options();
+            options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force deletion");
+            return options;
+        }
+   }
 
     private boolean silent;
 
-    Command parse(String[] args) {
+    IORunnable parse(String[] args, ODVpn odvpn) {
         final PreParsedCommand preParsedCommand = checkCommand(args);
         if (preParsedCommand != null) {
             try {
-                final CommandLine line = new DefaultParser().parse(preParsedCommand.getOptions(), preParsedCommand.args());
+                final CommandLine line = new DefaultParser().parse(preParsedCommand.command().options, preParsedCommand.args());
                 checkArgsOrder(line, preParsedCommand.args());
-                final String name;
-                if (line.getArgList().isEmpty()) {
-                    throw new IllegalArgumentException("Name is required");
-                } else {
-                    name = line.getArgList().remove(0);
-                }
-                final String command = preParsedCommand.command();
-                if (command.equals(INIT_COMMAND)) {
-                    if (line.getArgList().isEmpty()) {
-                        throw new IllegalArgumentException("Configuration file is required");
-                    }
-                    if (line.getArgList().size() > 1) {
-                        throw new IllegalArgumentException("Too many arguments");
-                    }
-                    return new Command(command, name, Path.of(line.getArgList().get(0)), line.hasOption(OPT_FORCE));
-                } else {
-                    return new Command(command, name, null, false);
-                }
+                final Command command = preParsedCommand.command();
+                command.checkArguments(line);
+                return () -> command.action.accept(odvpn, line);
             } catch (IllegalArgumentException | ParseException e) {
                 LoggerFactory.getLogger(CommandParser.class).debug("Failed to parse command line arguments", e);
                 if (!silent) {
                     final HelpFormatter formatter = new HelpFormatter();
-                    String prefix = COMMAND_PREFIX + " " + preParsedCommand.command() + " [options]" + " name";
-                    if (preParsedCommand.command().equals(INIT_COMMAND)) {
-                        prefix += " configFile";
+                    String prefix = COMMAND_PREFIX + " " + preParsedCommand.command().name;
+                    if (!preParsedCommand.command().options.getOptions().isEmpty()) {
+                        prefix += " [options]";
                     }
-                    formatter.printHelp(prefix, preParsedCommand.getOptions());
+                    String argsDescription = preParsedCommand.command().argsDescription;
+                    if (!argsDescription.isEmpty()) {
+                        prefix += " " + argsDescription;
+                    }
+                    formatter.printHelp(prefix, preParsedCommand.command().options);
                 }
             }
         }
@@ -78,38 +136,24 @@ class CommandParser {
         }
     }
 
-    private static record PreParsedCommand(String command, String[] args) {
-        private Options getOptions() {
-            final Options options = new Options();
-            switch (command) {
-                case INIT_COMMAND:
-                    options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force initialization");
-                    break;
-                case DELETE_COMMAND:
-                    options.addOption(OPT_FORCE, OPT_FORCE_LONG, false, "Force deletion");
-                    break;
-                case START_COMMAND, STOP_COMMAND:
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknown command: " + command);
-            }
-            return options;
-        }
+    private static record PreParsedCommand(Command command, String[] args) {
     }
 
     private PreParsedCommand checkCommand(String[] args) {
         if (args.length > 0) {
-            final String command = args[0];
-            if (command.equals(INIT_COMMAND) || command.equals(START_COMMAND) || command.equals(STOP_COMMAND) || command.equals(DELETE_COMMAND)) {
-                return new PreParsedCommand(command, args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0]);
+            final Command command = Command.fromName(args[0]);
+            if (command != null) {
+                return new PreParsedCommand(command, Arrays.copyOfRange(args, 1, args.length));
             }
         }
         if (!silent) {
             StringBuilder sb = new StringBuilder();
-            sb.append(INIT_COMMAND).append(" Initialize a new VPN server configuration").append('\n');
-            sb.append(START_COMMAND).append(" Start the VPN server").append('\n');
-            sb.append(STOP_COMMAND).append(" Stop the VPN server").append('\n');
-            sb.append(DELETE_COMMAND).append(" Delete the VPN server configuration");
+            for (Command command : Command.values()) {
+                if (!sb.isEmpty()) {
+                    sb.append('\n');
+                }
+                sb.append(command.name).append(" ").append(command.description);
+            }
             new HelpFormatter().printHelp(COMMAND_PREFIX+" command name", "", new Options(), "Available commands are:\n" + sb.toString());
         }
         return null;

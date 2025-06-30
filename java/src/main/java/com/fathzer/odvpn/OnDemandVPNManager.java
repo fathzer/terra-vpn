@@ -82,7 +82,7 @@ public class OnDemandVPNManager {
     public void checkConfiguration() throws IOException {
         // First check the vps configuration
         List<String> errors = config.vps().provider().checkConfiguration(config.vps());
-        // TODO check DDNS configuration
+        // TODO check DDNS and openvpn configuration
         if (!errors.isEmpty()) {
             throw new ConfigurationException(errors);
         }
@@ -95,7 +95,7 @@ public class OnDemandVPNManager {
      * @throws ConfigurationException if the configuration is invalid
      * @throws IllegalStateException if the configuration file already exists and force is false or if the server is running.
      */
-    public void build(boolean force) throws IOException {
+    public void init(Path openVpnConfigPath, boolean force) throws IOException {
         checkConfiguration();
         final Path configPath = root.resolve("config.json");
         if (Files.exists(configPath) && !force) {
@@ -106,6 +106,9 @@ public class OnDemandVPNManager {
             } else {
                 Files.createDirectories(configPath.getParent());
                 InstanceParametersParser.write(configPath, config);
+                if (openVpnConfigPath != null) {
+                    Files.copy(openVpnConfigPath, root.resolve(OpenVPNManager.OPENVPN_TAR_GZ));
+                }
             }
         }
     }
