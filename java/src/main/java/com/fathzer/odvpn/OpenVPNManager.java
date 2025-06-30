@@ -18,7 +18,7 @@ import com.fathzer.odvpn.utils.ListOutputStream;
 
 class OpenVPNManager implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OpenVPNManager.class);
-    private static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
+    static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
 
     private final Path localFile;
     private final Ssh ssh;
@@ -53,6 +53,8 @@ class OpenVPNManager implements AutoCloseable {
      * @throws IOException if an error occurs
     */
     void restore() throws IOException {
+        // Ensure the remote file does not exist (to avoid permission issues as it is created in sudo mode)
+        doSSHCommand(ssh, "sudo rm -f " + OPENVPN_TAR_GZ);
         ssh.upload(localFile.toString(), OPENVPN_TAR_GZ);
         final List<String> commands = Arrays.asList(
 			"#!/bin/bash",
