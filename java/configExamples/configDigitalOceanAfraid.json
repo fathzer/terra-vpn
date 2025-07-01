@@ -1,0 +1,22 @@
+{
+    "vps" : {
+        "providerId": "digitalOcean",
+        "config": {
+            "token": "${DIGITALOCEAN_TOKEN}",
+            "instance_type": "s-1vcpu-1gb",
+            "zone": "lon1"
+        }
+    },
+    "ddns": {
+        "providerId": "afraid",
+        "config": {
+            "token": "${AFRAID_TOKEN}"
+        }
+    },
+    "vpn": {
+        "hostname": "terravpn.soon.it",
+        "protocol": "tcp",
+        "port": 443,
+        "dnsServers": ["86.54.11.100","86.54.11.200"]
+    }
+}

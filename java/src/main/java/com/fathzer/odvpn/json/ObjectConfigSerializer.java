@@ -19,7 +19,7 @@ public class ObjectConfigSerializer<T> extends JsonSerializer<ObjectConfig<T>> {
     public void serialize(ObjectConfig<T> value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeStartObject();
         gen.writeStringField("providerId", providerId.apply(value.provider()));
-        gen.writeObjectField("config", value.config());
+        gen.writeObjectField("config", value.rawConfig());
         gen.writeEndObject();
     }
 }

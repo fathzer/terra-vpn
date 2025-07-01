@@ -1,0 +1,21 @@
+{
+    "vps" : {
+        "providerId": "permanent",
+        "config": {
+            "ssh_user": "debian",
+            "ip": "145.239.135.93"
+        }
+    },
+    "ddns": {
+        "providerId": "ovh",
+        "config": {
+            "user": "astesana.net-foreign",
+            "password": "${OVH_DDNS_PWD}"
+        }
+    },
+    "vpn": {
+        "hostname": "foreign.astesana.net",
+        "protocol": "tcp",
+        "port": 443
+    }
+}
