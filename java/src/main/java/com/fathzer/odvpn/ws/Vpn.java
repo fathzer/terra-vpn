@@ -1,25 +1,22 @@
 package com.fathzer.odvpn.ws;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fathzer.odvpn.repository.InstanceParameters;
 
 /** A VPN */
 public class Vpn {
     private final String id;
     private VPNStatus status;
-    private String protocol;
-    private String hostName;
-    private int port;
+    private InstanceParameters instanceParameters;
     
     /**
      * Creates a new VPN with the given ID
      * <br>The status is set to {@link VPNStatus#STOPPED}
      * @param id the VPN ID
      */
-    public Vpn(String id, String protocol, String hostName, int port) {
+    public Vpn(String id, InstanceParameters instanceParameters) {
         this.id = id;
-        this.hostName = hostName;
-        this.protocol = protocol;
-        this.port = port;
+        this.instanceParameters = instanceParameters;
         this.status = VPNStatus.STOPPED;
     }
 
@@ -32,21 +29,6 @@ public class Vpn {
         return id;
     }
 
-    @JsonProperty("protocol")
-    public String protocol() {
-        return protocol;
-    }
-
-    @JsonProperty("hostName")
-    public String hostName() {
-        return hostName;
-    }
-
-    @JsonProperty("port")
-    public int port() {
-        return port;
-    }
-
     /**
      * Returns the VPN status
      * @return the VPN status
@@ -54,6 +36,11 @@ public class Vpn {
     @JsonProperty("status")
     public VPNStatus status() {
         return status;
+    }
+
+    @JsonProperty("settings")
+    public InstanceParameters instanceParameters() {
+        return instanceParameters;
     }
 
     /**
