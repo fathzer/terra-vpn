@@ -1,5 +1,6 @@
 package com.fathzer.odvpn.json;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
@@ -8,26 +9,59 @@ import com.fathzer.odvpn.repository.ObjectConfig;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import java.io.IOException;
 import java.util.Map;
 
 class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters> {
 
-	@Override
+    @Override
     public InstanceParameters deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         ObjectMapper mapper = (ObjectMapper) p.getCodec();
-        JsonNode root = mapper.readTree(p);
+        JsonNode root;
+        try {
+            root = mapper.readTree(p);
+        } catch (JsonProcessingException e) {
+            throw new InvalidFormatException(p, "Invalid JSON: " + e.getMessage(), null, InstanceParameters.class);
+        }
 
-        ObjectConfig<DynamicDNSProvider> ddns = deserializeConfig(root.get("ddns"), DynamicDNSProvider.class, mapper);
-        ObjectConfig<VPSProvider> vps = deserializeConfig(root.get("vps"), VPSProvider.class, mapper);
-        Map<String, Object> vpn = mapper.convertValue(root.get("vpn"), new TypeReference<Map<String, Object>>() {});
+        if (root == null || !root.isObject()) {
+            throw new InvalidFormatException(p, "Invalid configuration: expected JSON object", root, InstanceParameters.class);
+        }
+
+        JsonNode ddnsNode = root.get("ddns");
+        if (ddnsNode == null || ddnsNode.isNull()) {
+            throw new InvalidFormatException(p, "Missing ddns configuration", null, ObjectConfig.class);
+        }
+        ObjectConfig<DynamicDNSProvider> ddns = deserializeConfig(ddnsNode, DynamicDNSProvider.class, mapper);
+
+        JsonNode vpsNode = root.get("vps");
+        if (vpsNode == null || vpsNode.isNull()) {
+            throw new InvalidFormatException(p, "Missing vps configuration", null, ObjectConfig.class);
+        }
+        ObjectConfig<VPSProvider> vps = deserializeConfig(vpsNode, VPSProvider.class, mapper);
+
+        JsonNode vpnNode = root.get("vpn");
+        if (vpnNode == null || vpnNode.isNull()) {
+            throw new InvalidFormatException(p, "Missing vpn configuration", null, Map.class);
+        }
+        Map<String, Object> vpn;
+        try {
+            vpn = mapper.convertValue(vpnNode, new TypeReference<Map<String, Object>>() {});
+        } catch (IllegalArgumentException e) {
+            throw InvalidFormatException.from(p, "Invalid vpn configuration: " + e.getMessage(), vpnNode, Map.class);
+        }
 
         return new InstanceParameters(vps, ddns, vpn);
     }
 
     private <T> ObjectConfig<T> deserializeConfig(JsonNode node, Class<T> providerType, ObjectMapper mapper) throws IOException {
-        JsonParser parser = node.traverse(mapper);
-        ObjectConfigDeserializer<T> deserializer = new ObjectConfigDeserializer<>(providerType);
-        return deserializer.deserialize(parser, mapper.getDeserializationContext());
+        try {
+            JsonParser parser = node.traverse(mapper);
+            ObjectConfigDeserializer<T> deserializer = new ObjectConfigDeserializer<>(providerType);
+            return deserializer.deserialize(parser, mapper.getDeserializationContext());
+        } catch (IOException e) {
+            throw InvalidFormatException.from(null, "Failed to deserialize configuration: " + e.getMessage(), node, providerType);
+        }
     }
 }

@@ -1,10 +1,8 @@
 package com.fathzer.odvpn.ws.controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ws.Vpn;
 import com.fathzer.odvpn.ws.VpnService;
@@ -13,6 +11,8 @@ import com.fathzer.odvpn.ws.VpnService.VpnException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.net.URI;
 import java.util.List;
@@ -33,11 +33,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("api/vpns")
 public class VpnController {
     private final VpnService service;
-    private final ObjectMapper objectMapper;
 
-    public VpnController(VpnService service, ObjectMapper objectMapper) {
+    public VpnController(VpnService service) {
         this.service = service;
-        this.objectMapper = objectMapper;
     }
 
     @PostMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -45,19 +43,14 @@ public class VpnController {
                description = "Creates a new VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.")
     public ResponseEntity<?> createVpn(
             @PathVariable String id,
-            @RequestParam("config")
-            @Parameter(description = "VPN configuration")
-            String configJson,
+            @RequestPart("config")
+            @Parameter(description = "VPN configuration", 
+                      content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                       schema = @Schema(implementation = InstanceParameters.class)))
+            InstanceParameters vpnDto,
             @RequestPart(value = "file", required = false)
             @Parameter(description = "Optional tar.gz file containing additional configuration")
             MultipartFile file) {
-
-        InstanceParameters vpnDto;
-        try {
-            vpnDto = objectMapper.readValue(configJson, InstanceParameters.class);
-        } catch (Exception e) {
-            throw new VpnException(HttpStatus.BAD_REQUEST, "Invalid JSON in config: " + e.getMessage());
-        }
         Vpn saved = service.create(id, vpnDto);
         
         if (file != null && !file.isEmpty()) {
