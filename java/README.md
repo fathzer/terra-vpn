@@ -41,30 +41,32 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [x] Rendre la configuration plus modulaire, les variables doivent être rattachées à leur provider, pas en tas.
 - [x] Rappatrier la config VPN en local, pour la redéployer lors du start afin d'éviter la re-génération des clients (au moins les clients existants).
   - [x] Faire une classe permettant d'éxécuter des scripts à distance et de télécharger/téléverser des fichiers.
-- [ ] Implémenter la commande `init`
-  - [x] implémenter la sauvegarde du fichier de configuration.
-  - [x] implémenter la vérification de l'état avant écrasement.
-  - [x] implémenter la génération des clefs ssh si nécessaire
+- [x] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
+- [x] prévoir quelque chose de plus safe pour les sauvegardes de la configuration (utilisation de variable d'environnement dans la config).
+- [ ] Implémenter les commandes CLI
+  - [ ] Implémenter la commande `init`
+    - [x] implémenter la sauvegarde du fichier de configuration.
+    - [x] implémenter la vérification de l'état avant écrasement.
+    - [ ] doc sur le fichier .json.
+  - [x] Implémenter la commande `start`
+  - [ ] Implémenter la commande `stop`
+  - [ ] Implémenter la commande `create_user`
+    - [x] Faire la création de l'utilisateur
+    - [ ] Refaire le backup de la configuration
+  - [x] Implémenter la commande `delete`
+  - [ ] Implémenter la commande `delete_user`
+  - [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
+  - [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
+  - [ ] Implémenter une IHM web au moins pour start et stop.
+- [ ] Implémenter les web services
+  - [x] implémenter la génération des clefs ssh au démarrage si nécessaire
     - [x] implémenter un générateur de clef ssh.
-  - [x] implémenter la mise à jour du DNS dynamique en Java plutôt que via un script shell.
-  - [ ] doc sur le fichier .json.
-  - [x] prévoir quelque chose de plus safe pour les sauvegardes de la configuration (encryptage avec une clef propre à l'utilisateur passée en paramètre - variable d'environnement ou système).
-     - [ ] Documenter ça
-- [x] Implémenter la commande `start`
-- [ ] Implémenter la commande `stop`
-- [ ] Implémenter la commande `create_user`
-  - [x] Faire la création de l'utilisateur
-  - [ ] Refaire le backup de la configuration
-- [ ] Implémenter la commande `delete`
-- [ ] Implémenter la commande `delete_user`
-- [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
-- [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
-- [ ] Implémenter une IHM web au moins pour start et stop.
-  - [ ] Implémenter les web services
-    - [x] Create/Update VPN config
-    - [x] List VPN config
-    - [x] Delete VPN config
-    - [ ] Start
-    - [ ] Stop
-    - [ ] Add/remove user
-- [ ] Documenter limitation sur les noms de VPN ()
+  - [x] Create/Update VPN config
+  - [x] List VPN config
+  - [x] Delete VPN config
+  - [ ] Start
+  - [ ] Stop
+  - [ ] Add/remove user
+  - [ ] List users
+  - [ ] Recup fichier de conf d'un utilisateur
+- [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)

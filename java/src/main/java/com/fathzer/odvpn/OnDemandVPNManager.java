@@ -48,7 +48,7 @@ public class OnDemandVPNManager {
             throw new IllegalArgumentException("Output directory cannot be null");
         }
         if (!isValidId(root.getFileName().toString())) {
-            throw new IllegalArgumentException("Invalid VPN ID: " + root.getFileName());
+            throw new IllegalArgumentException("Invalid VPN ID: " + root.getFileName()+" (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)");
         }
         if (sshPrivateKey == null || !Files.isRegularFile(sshPrivateKey)) {
             throw new IllegalArgumentException("SSH private key cannot be null or not a file");
@@ -96,7 +96,7 @@ public class OnDemandVPNManager {
         new ObjectMapper().writeValue(path.toFile(), Map.of("id", id, "ip", ip));
     }
 
-    public void checkConfiguration() throws IOException {
+    private void checkConfiguration() throws IOException {
         // First check the vps configuration
         List<String> errors = config.vps().provider().checkConfiguration(config.vps());
         // TODO check DDNS and openvpn configuration
