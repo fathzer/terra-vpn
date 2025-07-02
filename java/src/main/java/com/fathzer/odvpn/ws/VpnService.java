@@ -1,9 +1,9 @@
 package com.fathzer.odvpn.ws;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fathzer.odvpn.OnDemandVPNManager;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class VpnService {
@@ -35,13 +35,11 @@ public class VpnService {
         }
     }
 
-    private final Map<String, Vpn> storage = new ConcurrentHashMap<>();
+    private final Map<String, OnDemandVPNManager> storage = new ConcurrentHashMap<>();
 
-    private final ObjectMapper objectMapper;
     private final VPNRepositorySettings settings;
 
-    public VpnService(VPNRepositorySettings validatedSettings, ObjectMapper objectMapper) throws IOException {
-        this.objectMapper = Objects.requireNonNull(objectMapper);
+    public VpnService(VPNRepositorySettings validatedSettings) throws IOException {
         this.settings = Objects.requireNonNull(validatedSettings);
         logger.info("Loading On Demand VPN definitions from {}", settings.dataPath());
         
@@ -57,16 +55,15 @@ public class VpnService {
     }
     
     private void loadVpnFromDirectory(Path dir) {
-        if (!isValidId(dir.getFileName().toString())) {
+        if (!OnDemandVPNManager.isValidId(dir.getFileName().toString())) {
             logger.warn("Ignoring directory {}. Its name is not a valid VPN ID", dir.getFileName());
             return;
         }
         try {
             Path configFile = dir.resolve("config.json");
             if (Files.exists(configFile)) {
-                InstanceParameters params = objectMapper.readValue(configFile.toFile(), InstanceParameters.class);
-                Vpn vpn = new Vpn(dir.getFileName().toString(), params);
-                storage.put(vpn.id(), vpn);
+                OnDemandVPNManager manager = new OnDemandVPNManager(dir, settings.privateKeyPath());
+                storage.put(manager.id(), manager);
                 logger.info("Loaded VPN configuration from {}", dir);
             } else {
                 logger.warn("Configuration file {} not found in directory {}", configFile, dir);
@@ -76,37 +73,46 @@ public class VpnService {
         }
     }
 
-    public Vpn create(String id, InstanceParameters dto) {
-        if (!isValidId(id)) {
-            throw new VpnException(HttpStatus.BAD_REQUEST, "ID must start with a letter or number and can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)");
+    private Vpn toVpn(OnDemandVPNManager manager) {
+        Vpn vpn = new Vpn(manager.id(), manager.settings());
+        try {
+            if (manager.isServerRunning()) {
+                vpn.setStatus(VPNStatus.RUNNING);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-        final Vpn vpn = new Vpn(id, dto);
-        if (storage.putIfAbsent(id, vpn) != null) throw new VpnException(HttpStatus.CONFLICT, "VPN " + id + " already exists");
         return vpn;
-    }
+    }   
 
-    public static boolean isValidId(String id) {
-        return id != null && id.matches("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$");
+    public Vpn create(String id, InstanceParameters dto, Path openVPNConfigPath, boolean force) throws IOException {
+        OnDemandVPNManager manager = new OnDemandVPNManager(dto, settings.dataPath().resolve(id), settings.privateKeyPath());
+        manager.init(openVPNConfigPath, force);
+        storage.put(id, manager);
+        return toVpn(manager);
     }
 
     public List<Vpn> findAll() {
-        return new ArrayList<>(storage.values());
+        return storage.values().stream().map(this::toVpn).toList();
     }
 
+    public boolean exists(String id) {
+        return storage.containsKey(id);
+    }
+    
     public Vpn findVpnById(String id) {
-        final Vpn vpn = storage.get(id);
-        if (vpn == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
-        return vpn;
+        return toVpn(getManager(id));
     }
 
-    public Vpn update(String id, InstanceParameters dto) {
-        Vpn existing = findVpnById(id);
-        //TODO
-        return existing;
+    private OnDemandVPNManager getManager(String id) {
+        final OnDemandVPNManager manager = storage.get(id);
+        if (manager == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
+        return manager;
     }
 
-    public void delete(String id) {
-        if (storage.remove(id) == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
+    public void delete(String id) throws IOException {
+        getManager(id).delete();
+        storage.remove(id);
     }
 
     public VPNStatus getStatus(String id) {

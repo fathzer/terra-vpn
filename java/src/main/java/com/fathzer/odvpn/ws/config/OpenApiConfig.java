@@ -18,8 +18,8 @@ public class OpenApiConfig {
     public OpenApiCustomizer fixMultipartJsonEncoding() {
         return openApi -> {
             PathItem pathItem = openApi.getPaths().get("/api/vpns/{id}");
-            if (pathItem != null && pathItem.getPost() != null) {
-                RequestBody requestBody = pathItem.getPost().getRequestBody();
+            if (pathItem != null && pathItem.getPut() != null) {
+                RequestBody requestBody = pathItem.getPut().getRequestBody();
                 if (requestBody != null && requestBody.getContent() != null) {
                     MediaType mediaType = requestBody.getContent()
                         .get("multipart/form-data");

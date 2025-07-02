@@ -61,3 +61,10 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 - [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
 - [ ] Implémenter une IHM web au moins pour start et stop.
   - [ ] Implémenter les web services
+    - [x] Create/Update VPN config
+    - [x] List VPN config
+    - [x] Delete VPN config
+    - [ ] Start
+    - [ ] Stop
+    - [ ] Add/remove user
+- [ ] Documenter limitation sur les noms de VPN ()

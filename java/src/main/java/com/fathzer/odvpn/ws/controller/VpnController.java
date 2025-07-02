@@ -14,7 +14,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -38,22 +41,23 @@ public class VpnController {
         this.service = service;
     }
 
-    @PostMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Creates a new VPN configuration", 
-               description = "Creates a new VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Creates or updates a VPN configuration", 
+               description = "Creates or updates a VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.")
     public ResponseEntity<?> createVpn(
             @PathVariable String id,
             @RequestPart("config")
             @Parameter(description = "VPN configuration", 
-                      content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                       schema = @Schema(implementation = InstanceParameters.class)))
+                      content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = InstanceParameters.class)))
             InstanceParameters vpnDto,
             @RequestPart(value = "file", required = false)
             @Parameter(description = "Optional tar.gz file containing additional configuration")
-            MultipartFile file) {
-        Vpn saved = service.create(id, vpnDto);
-        
-        if (file != null && !file.isEmpty()) {
+            MultipartFile file) throws IOException {
+        final boolean exists = service.exists(id);
+        Path tempFile;
+        if (file == null || file.isEmpty()) {
+            tempFile = null;
+        } else {
             String contentType = file.getContentType();
             String originalFilename = file.getOriginalFilename();
             boolean isValidContentType = "application/gzip".equals(contentType) || "application/x-gzip".equals(contentType);
@@ -62,10 +66,18 @@ public class VpnController {
             if (!isValidContentType && !isValidExtension) {
                 throw new VpnException(HttpStatus.BAD_REQUEST, "Uploaded file must be a tar.gz file");
             }
+            tempFile = Files.createTempFile("openvpn", ".tar.gz");
+            file.transferTo(tempFile);
         }
-        
-        URI location = URI.create("/vpns/" + id);
-        return ResponseEntity.created(location).body(saved);
+        Vpn saved;
+        try {
+            saved = service.create(id, vpnDto, tempFile, true);
+        } finally {
+            if (tempFile != null) {
+                Files.delete(tempFile);
+            }
+        }
+        return exists ? ResponseEntity.ok(saved) : ResponseEntity.created(URI.create("/vpns/" + id)).body(saved);
     }
 
     @GetMapping
@@ -82,17 +94,10 @@ public class VpnController {
         return service.findVpnById(id);
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Updates a specific VPN configuration", 
-               description = "Updates a specific VPN configuration by its ID")
-    public ResponseEntity<Vpn> updateVpn(@PathVariable String id, @RequestBody InstanceParameters vpnDto) {
-        return ResponseEntity.ok(service.update(id, vpnDto));
-    }
-
     @DeleteMapping("/{id}")
     @Operation(summary = "Deletes a specific VPN configuration", 
                description = "Deletes a specific VPN configuration by its ID")
-    public Void deleteVpn(@PathVariable String id) {
+    public Void deleteVpn(@PathVariable String id) throws IOException {
         service.delete(id);
         return null;
     }

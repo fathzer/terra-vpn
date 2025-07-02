@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.net.InetAddress;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,6 +47,9 @@ public class OnDemandVPNManager {
         if (root == null) {
             throw new IllegalArgumentException("Output directory cannot be null");
         }
+        if (!isValidId(root.getFileName().toString())) {
+            throw new IllegalArgumentException("Invalid VPN ID: " + root.getFileName());
+        }
         if (sshPrivateKey == null || !Files.isRegularFile(sshPrivateKey)) {
             throw new IllegalArgumentException("SSH private key cannot be null or not a file");
         }
@@ -52,9 +59,19 @@ public class OnDemandVPNManager {
     }
 
     public OnDemandVPNManager(Path root, Path sshPrivateKey) throws IOException {
-        this.config = InstanceParametersParser.parse(root.resolve("config.json"));
-        this.root = root;
-        this.sshPrivateKey = sshPrivateKey;
+        this(InstanceParametersParser.parse(root.resolve("config.json")), root, sshPrivateKey);
+    }
+
+    public static boolean isValidId(String id) {
+        return id != null && id.matches("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$");
+    }
+
+    public String id() {
+        return root.getFileName().toString();
+    }
+
+    public InstanceParameters settings() {
+        return config;
     }
 
     public boolean isServerRunning() throws IOException {
@@ -107,9 +124,37 @@ public class OnDemandVPNManager {
                 Files.createDirectories(configPath.getParent());
                 InstanceParametersParser.write(configPath, config);
                 if (openVpnConfigPath != null) {
-                    Files.copy(openVpnConfigPath, root.resolve(OpenVPNManager.OPENVPN_TAR_GZ));
+                    Files.copy(openVpnConfigPath, root.resolve(OpenVPNManager.OPENVPN_TAR_GZ), StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+        }
+    }
+
+    /**
+     * Deletes the configuration directory and all its contents.
+     * @throws IOException if an I/O error occurs
+     */
+    public void delete() throws IOException {
+        if (isServerRunning()) {
+            throw new IllegalStateException("Can't delete a running server, please stop it first");
+        }
+        if (Files.exists(root)) {
+            Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc != null) {
+                        throw exc;
+                    }
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 
