@@ -13,14 +13,9 @@ public record VPNRepositorySettings(Path dataPath, Path privateKeyPath) {
     private static final Logger logger = LoggerFactory.getLogger(VPNRepositorySettings.class);
 
     public static VPNRepositorySettings fromEnvironment(boolean autoCreateKeyPair) {
-        final Path dataPath = Path.of(System.getProperty("data.dir", "data"));
-        
-        String sshPrivateKeyStringPath = System.getenv("ODVPN_SSH_KEY_PATH");
-        if (sshPrivateKeyStringPath == null) {
-            sshPrivateKeyStringPath = System.getProperty("privateKey.path", dataPath.resolve(".ssh/id_rsa").toString());
-        }
-        final Path sshPrivateKeyPath = Path.of(sshPrivateKeyStringPath);
-        logger.info("Starting On Demand VPN web services with data.dir: {} and privateKey.path: {}", dataPath, sshPrivateKeyPath);
+        final Path dataPath = getPath("ODVPN_DATA_DIR", "data.dir", "data");
+        final Path sshPrivateKeyPath = getPath("ODVPN_SSH_KEY_PATH", "privateKey.path", ".ssh/id_rsa");
+        logger.info("On Demand VPN launched with data.dir: {} and privateKey.path: {}", dataPath, sshPrivateKeyPath);
         if (Files.isRegularFile(dataPath)) {
             throw new IllegalStateException("Data directory is not a directory");
         } else if (!Files.exists(dataPath)) {
@@ -51,5 +46,13 @@ public record VPNRepositorySettings(Path dataPath, Path privateKeyPath) {
         } else {
             throw new IllegalStateException(String.format("SSH private key file %s not found", sshPrivateKeyPath.toAbsolutePath()));
         }
+    }
+
+    private static Path getPath(String envVar, String property, String defaultValue) {
+        String path = System.getenv(envVar);
+        if (path == null) {
+            path = System.getProperty(property, defaultValue);
+        }
+        return Path.of(path);
     }
 }
