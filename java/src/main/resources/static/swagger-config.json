@@ -1,0 +1,10 @@
+{
+    "operationsSorter": "alpha", 
+    "urls": [
+      {
+        "name": "MyAPI",
+        "url": "/api-docs"
+      }
+    ]
+  }
+  
