@@ -42,24 +42,68 @@ public class ODVpn {
         }
 
         final Path directory = settings.dataPath().resolve(name);
-        final OnDemandVPNManager manager = new OnDemandVPNManager(config, directory, settings.privateKeyPath());
+        final AbstractOnDemandVPNManager manager = getManager(name);
         logger.info("Writing configuration files to directory: {}", directory.toAbsolutePath());
 
         manager.init(openVpnConfigPath, force);
         logger.info("Finished");
     }
 
-    void start(final String name) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'start'");
+    private AbstractOnDemandVPNManager getManager(final String name) throws IOException {
+        return new LocalDiskOnDemandVPNManager(settings, name);
     }
 
-    void stop(final String name) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'stop'");
+    void start(final String name) throws IOException {
+        getManager(name).start(new MyStartProgressListener());
     }
 
-    void delete(final String name, final boolean force) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+    void stop(final String name) throws IOException {
+        getManager(name).stop();
+    }
+
+    void delete(final String name, final boolean force) throws IOException {
+        getManager(name).delete(force);
+    }
+
+    private class MyStartProgressListener implements StartProgressListener {
+        @Override
+        public void creatingVPS(VPSProvider.VPSState state) {
+            logger.info("VPS state: {}", state);
+        }
+
+        @Override
+        public void updatingDDNS(String hostName, String ip) {
+            logger.info("Updating DDNS for {} with IP {}", hostName, ip);
+        }
+
+        @Override
+        public void waitingSSHConnection(String ip) {
+            logger.info("Waiting for SSH connection to {}", ip);
+        }
+
+        @Override
+        public void restoringOpenVPNConfiguration() {
+            logger.info("Restoring openvpn configuration");
+        }
+
+        @Override
+        public void creatingOpenVPNConfiguration() {
+            logger.info("Creating openvpn configuration (can be long)");
+        }
+
+        @Override
+        public void startingOpenVPNServer() {
+            logger.info("Starting openvpn server");
+        }
+
+        @Override
+        public void waitingDNSPropagation() {
+            logger.info("Waiting for DNS propagation");
+        }
+
+        @Override
+        public void ready() {
+            logger.info("Openvpn server is ready");
+        }
     }
 }

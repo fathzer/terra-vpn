@@ -32,7 +32,7 @@ public class UserCreator {
 
         final String ip = getIp();
         final String sshUser = VPSProvider.getSSHUser(config.vps());
-        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(root, ip, sshUser, sshPrivateKey)) {
+        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, root.resolve("openvpn.tar.gz"), sshPrivateKey)) {
             openVPNConfigManager.addUser(username);
             List<String> configFile = openVPNConfigManager.getUserConfigurationFile(username);
             Files.write(root.resolve(username + ".ovpn"), configFile);

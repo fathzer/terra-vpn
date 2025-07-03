@@ -9,7 +9,6 @@ import com.fathzer.odvpn.ws.VpnService;
 import com.fathzer.odvpn.ws.VpnService.VpnException;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -98,7 +97,7 @@ public class VpnController {
     @Operation(summary = "Deletes a specific VPN configuration", 
                description = "Deletes a specific VPN configuration by its ID")
     public Void deleteVpn(@PathVariable String id) throws IOException {
-        service.delete(id);
+        service.delete(id, false);
         return null;
     }
 

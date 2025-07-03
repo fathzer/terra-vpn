@@ -29,7 +29,7 @@ public abstract class VPSProvider implements Provider {
         /**
          * The VPS instance is being deleted.
          */
-        DELETING
+        STOPPED
     }
 
     /**

@@ -15,7 +15,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fathzer.odvpn.OnDemandVPNManager;
+import com.fathzer.odvpn.AbstractOnDemandVPNManager;
+import com.fathzer.odvpn.LocalDiskOnDemandVPNManager;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
 
@@ -35,8 +36,7 @@ public class VpnService {
         }
     }
 
-    private final Map<String, OnDemandVPNManager> storage = new ConcurrentHashMap<>();
-
+    private final Map<String, AbstractOnDemandVPNManager> storage = new ConcurrentHashMap<>();
     private final VPNRepositorySettings settings;
 
     public VpnService(VPNRepositorySettings validatedSettings) throws IOException {
@@ -55,14 +55,15 @@ public class VpnService {
     }
     
     private void loadVpnFromDirectory(Path dir) {
-        if (!OnDemandVPNManager.isValidId(dir.getFileName().toString())) {
+        final String id = dir.getFileName().toString();
+        if (!AbstractOnDemandVPNManager.isValidId(id)) {
             logger.warn("Ignoring directory {}. Its name is not a valid VPN ID", dir.getFileName());
             return;
         }
         try {
             Path configFile = dir.resolve("config.json");
             if (Files.exists(configFile)) {
-                OnDemandVPNManager manager = new OnDemandVPNManager(dir, settings.privateKeyPath());
+                LocalDiskOnDemandVPNManager manager = new LocalDiskOnDemandVPNManager(settings, id);
                 storage.put(manager.id(), manager);
                 logger.info("Loaded VPN configuration from {}", dir);
             } else {
@@ -73,7 +74,7 @@ public class VpnService {
         }
     }
 
-    private Vpn toVpn(OnDemandVPNManager manager) {
+    private Vpn toVpn(AbstractOnDemandVPNManager manager) {
         Vpn vpn = new Vpn(manager.id(), manager.settings());
         try {
             if (manager.isServerRunning()) {
@@ -86,7 +87,7 @@ public class VpnService {
     }   
 
     public Vpn create(String id, InstanceParameters dto, Path openVPNConfigPath, boolean force) throws IOException {
-        OnDemandVPNManager manager = new OnDemandVPNManager(dto, settings.dataPath().resolve(id), settings.privateKeyPath());
+        AbstractOnDemandVPNManager manager = new LocalDiskOnDemandVPNManager(settings, dto, id);
         manager.init(openVPNConfigPath, force);
         storage.put(id, manager);
         return toVpn(manager);
@@ -104,14 +105,14 @@ public class VpnService {
         return toVpn(getManager(id));
     }
 
-    private OnDemandVPNManager getManager(String id) {
-        final OnDemandVPNManager manager = storage.get(id);
+    private AbstractOnDemandVPNManager getManager(String id) {
+        final AbstractOnDemandVPNManager manager = storage.get(id);
         if (manager == null) throw new VpnException(HttpStatus.NOT_FOUND, "VPN " + id + " not found");
         return manager;
     }
 
-    public void delete(String id) throws IOException {
-        getManager(id).delete();
+    public void delete(String id, boolean force) throws IOException {
+        getManager(id).delete(force);
         storage.remove(id);
     }
 

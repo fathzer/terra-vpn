@@ -11,6 +11,15 @@ import com.fathzer.odvpn.ssh.KeyGenerator;
 
 public record VPNRepositorySettings(Path dataPath, Path privateKeyPath) {
     private static final Logger logger = LoggerFactory.getLogger(VPNRepositorySettings.class);
+    
+    public VPNRepositorySettings {
+        if (dataPath == null) {
+            throw new IllegalArgumentException("dataPath cannot be null");
+        }
+        if (privateKeyPath == null) {
+            throw new IllegalArgumentException("privateKeyPath cannot be null");
+        }
+    }
 
     public static VPNRepositorySettings fromEnvironment(boolean autoCreateKeyPair) {
         final Path dataPath = getPath("ODVPN_DATA_DIR", "data.dir", "data");

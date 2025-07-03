@@ -110,7 +110,7 @@ public class VultrVPS extends VPSProvider {
     @Override
     public boolean exists(InstanceParameters parameters, String id) throws IOException {
         try (VultrClient client = new VultrClient(parameters.vps().config().get(TOKEN_VAR))) {
-            return !client.getState(id).status().equals(Status.DELETING);
+            return !client.getState(id).status().equals(Status.STOPPED);
         } catch (ErrorResponseException e) {
             if (e.getStatusCode() == 404) {
                 return false;

@@ -1,0 +1,241 @@
+package com.fathzer.odvpn;
+
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
+import com.fathzer.odvpn.repository.InstanceParameters;
+import com.fathzer.odvpn.ssh.Ssh;
+import com.fathzer.odvpn.utils.DnsUpdateAwaiter;
+
+public abstract class AbstractOnDemandVPNManager {
+
+    public static class ConfigurationException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+
+		public ConfigurationException(List<String> errors) {
+            super("Configuration errors: " + errors);
+        }
+    }
+
+    public record VPSInfo(String id, String ip) {}
+
+    protected final String id;
+    protected final InstanceParameters config;
+
+    protected AbstractOnDemandVPNManager(String id, InstanceParameters config) {
+        if (!isValidId(id)) {
+            throw new IllegalArgumentException("Invalid VPN ID: " + id+" (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)");
+        }
+        if (config == null) {
+            throw new IllegalArgumentException("Configuration cannot be null");
+        }
+        this.id = id;
+        this.config = config;
+    }
+
+    /** Checks if the given id is valid
+     * <br>A valid id must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens
+     * @param id the id to check
+     * @return true if the id is valid, false otherwise
+     */
+    public static boolean isValidId(String id) {
+        return id != null && id.matches("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$");
+    }
+
+    /** Gets the VPN id
+     * @return a String
+     */
+    public String id() {
+        return id;
+    }
+
+    /** Gets the VPN configuration
+     * @return the VPN configuration
+     */
+    public InstanceParameters settings() {
+        return config;
+    }
+
+    /** Checks if the VPN server is running (by checking the VPS provider)
+     * @return true if the VPN server is running, false otherwise
+     * @throws IOException if an I/O error occurs
+     */
+    public boolean isServerRunning() throws IOException {
+        VPSInfo vpsInfo = getLocalVPSInfo();
+        return vpsInfo!=null && config.vps().provider().exists(config, vpsInfo.id());
+    }
+
+    /**
+     * Gets the VPS information (id and ip address) stored in the persistent storage.
+     * @return the VPS information
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract VPSInfo getLocalVPSInfo() throws IOException;
+
+    /**
+     * Saves the VPS information in the persistent storage.
+     * @param vpsInfo the VPS information
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract void saveLocalVPSInfo(VPSInfo vpsInfo) throws IOException;
+
+    /**
+     * Checks if the VPS exists in the persistent storage.
+     * @return true if the VPS exists, false otherwise
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract boolean exists() throws IOException;
+
+    /**
+     * Saves the configuration in the persistent storage.
+     * @param openVpnConfigPath the path to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract void save(Path openVpnConfigPath) throws IOException;
+
+    /**
+     * Deletes the configuration in the persistent storage.
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract void erase() throws IOException;
+
+    /**
+     * Initializes the configuration.
+     * @param force if true, the configuration file will be overwritten if it already exists and the server is not running
+     * @throws IOException if an I/O error occurs
+     * @throws ConfigurationException if the configuration is invalid
+     * @throws IllegalStateException if the configuration file already exists and force is false or if the server is running.
+     */
+    public void init(Path openVpnConfigPath, boolean force) throws IOException {
+        checkConfiguration();
+        if (exists() && !force) {
+            throw new IllegalStateException("Configuration file already exists");
+        } else {
+            if (isServerRunning()) {
+                throw new IllegalStateException("Can't change configuration of a running server");
+            } else {
+                save(openVpnConfigPath);
+            }
+        }
+    }
+
+    protected abstract Path getOpenVPNConfigPath();
+
+    protected abstract Path getSSHPrivateKeyPath();
+
+    private void checkConfiguration() throws IOException {
+        // First check the vps configuration
+        List<String> errors = config.vps().provider().checkConfiguration(config.vps());
+        // TODO check DDNS and openvpn configuration
+        if (!errors.isEmpty()) {
+            throw new ConfigurationException(errors);
+        }
+    }
+
+    /** Starts the VPN server
+     * @param progressListener the progress listener to notify of the progress
+     * @throws IOException if an I/O error occurs
+     */
+    public void start(StartProgressListener progressListener) throws IOException {
+            final AtomicBoolean ddnsUpdated = new AtomicBoolean(false);
+        // Create the VPS if it does not exist
+        final String ip;
+        if (!isServerRunning()) {
+            DNSUpdateProgressListener listener = new DNSUpdateProgressListener(ddnsUpdated, progressListener);
+            VPSProvider.VPSState vpsState = config.vps().provider().createVPS(config, listener);
+            ip = vpsState.ip();
+            saveLocalVPSInfo(new VPSInfo(vpsState.id(), ip));
+        } else {
+            ip = getLocalVPSInfo().ip();
+        }
+
+        // Update DDNS if needed
+        if (!ddnsUpdated.get()) {
+            updateDDNS(ip, progressListener);
+        }
+
+        // Wait for ssh connection is available
+        final String keyPath = getSSHPrivateKeyPath().toAbsolutePath().toString();
+        final String sshUser = VPSProvider.getSSHUser(config.vps());
+        Ssh.Builder builder = new Ssh.Builder(ip, keyPath).user(sshUser).maxTryCount(24);
+        progressListener.waitingSSHConnection(ip);
+        try (Ssh ssh = builder.build()) {
+            // Do nothing, we just connect to check if the connection is available
+        }
+
+        // Do openvpn configuration or restore it
+        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, getOpenVPNConfigPath(), getSSHPrivateKeyPath())) {
+            if (openVPNConfigManager.hasBackup()) {
+                progressListener.restoringOpenVPNConfiguration();
+                openVPNConfigManager.restore();
+            } else {
+                progressListener.creatingOpenVPNConfiguration();
+                openVPNConfigManager.initRemote(config);
+                openVPNConfigManager.save();
+            }
+            // Start the server
+            progressListener.startingOpenVPNServer();
+            openVPNConfigManager.start(config);
+        }
+        String hostName = config.hostName();
+        progressListener.waitingDNSPropagation();
+        new DnsUpdateAwaiter(60, 5000).waitFor(hostName, ip);
+        progressListener.ready();
+    }
+
+    private void updateDDNS(String ip, StartProgressListener progressListener) throws IOException {
+        try {
+            progressListener.updatingDDNS(config.hostName(), ip);
+            config.ddns().provider().updateDns(config.ddns().config(), config.hostName(), ip);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException();
+        }
+    }
+
+        private class DNSUpdateProgressListener implements Consumer<VPSProvider.VPSState> {
+        private final AtomicBoolean ddnsUpdated;
+        private final StartProgressListener chained;
+        
+        private DNSUpdateProgressListener(AtomicBoolean ddnsUpdated, StartProgressListener chained) {
+            this.ddnsUpdated = ddnsUpdated;
+            this.chained = chained;
+        }
+
+        @Override
+        public void accept(VPSProvider.VPSState state) {
+            chained.creatingVPS(state);
+            try {
+                if (!ddnsUpdated.get() && state.status().equals(VPSProvider.Status.IP_READY)) {
+                    ddnsUpdated.set(true);
+                    updateDDNS(state.ip(), this.chained);
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
+
+    /** Stops the VPN server
+     * @throws IOException if an I/O error occurs
+     */
+    public void stop() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /** Deletes the VPN configuration
+     * @throws IOException if an I/O error occurs
+     */
+    public void delete(boolean force) throws IOException {
+        if (isServerRunning() && !force) {
+            throw new IllegalStateException("Can't delete a running server, please stop it first");
+        } else if (exists()) {
+            erase();
+        }
+    }
+}
