@@ -1,8 +1,11 @@
 package com.fathzer.odvpn.ws.controller;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ws.Vpn;
 import com.fathzer.odvpn.ws.VpnService;
@@ -14,12 +17,12 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("api/vpns")
+@RequestMapping("api/v1/vpns")
 public class VpnController {
     private final VpnService service;
 
@@ -42,8 +45,9 @@ public class VpnController {
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Creates or updates a VPN configuration", 
-               description = "Creates or updates a VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.")
-    public ResponseEntity<?> createVpn(
+               description = "Creates or updates a VPN configuration without starting it. Optionally accepts a tar.gz file containing additional configuration.",
+               tags = {"01 - vpns"})
+    public ResponseEntity<Void> createVpn(
             @PathVariable String id,
             @RequestPart("config")
             @Parameter(description = "VPN configuration", 
@@ -68,34 +72,36 @@ public class VpnController {
             tempFile = Files.createTempFile("openvpn", ".tar.gz");
             file.transferTo(tempFile);
         }
-        Vpn saved;
         try {
-            saved = service.create(id, vpnDto, tempFile, true);
+            service.create(id, vpnDto, tempFile, true);
         } finally {
             if (tempFile != null) {
                 Files.delete(tempFile);
             }
         }
-        return exists ? ResponseEntity.ok(saved) : ResponseEntity.created(URI.create("/vpns/" + id)).body(saved);
+        return exists ? ResponseEntity.ok().build() : ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).build();
     }
 
     @GetMapping
     @Operation(summary = "Lists all VPN configurations", 
-               description = "Lists all VPN configurations")
-    public List<Vpn> getAllVpns() {
+               description = "Lists all VPN configurations",
+               tags = {"01 - vpns"})
+    public List<String> getAllVpns() {
         return service.findAll();
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Retrieves a specific VPN configuration", 
-               description = "Retrieves a specific VPN configuration by its ID")
+               description = "Retrieves a specific VPN configuration by its ID",
+               tags = {"01 - vpns"})
     public Vpn getVpn(@PathVariable String id) {
         return service.findVpnById(id);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Deletes a specific VPN configuration", 
-               description = "Deletes a specific VPN configuration by its ID")
+               description = "Deletes a specific VPN configuration by its ID",
+               tags = {"01 - vpns"})
     public Void deleteVpn(@PathVariable String id) throws IOException {
         service.delete(id, false);
         return null;
@@ -103,46 +109,61 @@ public class VpnController {
 
     @GetMapping("/{id}/status")
     @Operation(summary = "Retrieves the status of a specific VPN", 
-               description = "Retrieves the status of a specific VPN by its ID")
-    public Map<String, String> getStatus(@PathVariable String id) {
-        return Map.of("status", service.getStatus(id).name());
+               description = "Retrieves the status of a specific VPN by its ID",
+               tags = {"01 - vpns"})
+    public DetailedStatus getStatus(@PathVariable String id) throws IOException {
+        return service.getStatus(id);
     }
 
     @PostMapping("/{id}/start")
     @Operation(summary = "Starts a specific VPN", 
-               description = "Starts a specific VPN by its ID")
-    public Map<String, String> startVpn(@PathVariable String id) {
-        return Map.of("status", service.startVpn(id).name());
+               description = "Starts a specific VPN by its ID",
+               tags = {"02 - start/stop"})
+    public ResponseEntity<Void> startVpn(@PathVariable String id) throws IOException {
+        service.start(id);
+        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, "/vpns/" + id + "/status").build();
     }
 
     @PostMapping("/{id}/stop")
     @Operation(summary = "Stops a specific VPN", 
-               description = "Stops a specific VPN by its ID")
-    public Map<String, String> stopVpn(@PathVariable String id) {
-        return Map.of("status", service.stopVpn(id).name());
+               description = "Stops a specific VPN by its ID",
+               tags = {"02 - start/stop"})
+    public Void stopVpn(@PathVariable String id) throws IOException {
+        service.stop(id);
+        return null;
     }
 
     @GetMapping("/{id}/users")
     @Operation(summary = "List all VPN users", 
-               description = "List all VPN users")
-    public List<String> listVpnUsers(@PathVariable String id) {
+               description = "List all VPN users",
+               tags = {"03 - users"})
+    public List<String> listVpnUsers(@PathVariable String id) throws IOException {
         return service.listUsers(id);
     }
 
     @PostMapping("/{id}/users/{user}")
     @Operation(summary = "Create a specific VPN user", 
-               description = "Create a specific VPN user by its ID and name")
-    public ResponseEntity<?> createVpnUser(@PathVariable String id, @PathVariable String user) {
+               description = "Create a specific VPN user by its ID and name",
+               tags = {"03 - users"})
+    public ResponseEntity<?> createVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
         service.createUser(id, user);
 
-        URI location = URI.create("/vpns/" + id + "/users/" + user);
-        return ResponseEntity.created(location).body(Map.of("user", user));
+        return ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).body(Map.of("user", user));
+    }
+
+    @GetMapping("/{id}/users/{user}")
+    @Operation(summary = "Retrieves a specific VPN user", 
+               description = "Retrieves a specific VPN user by its ID and name",
+               tags = {"03 - users"})
+    public String getVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
+        throw new UnsupportedOperationException("Unimplemented method 'getVpnUser'");
     }
 
     @DeleteMapping("/{id}/users/{user}")
     @Operation(summary = "Deletes a specific VPN user", 
-               description = "Deletes a specific VPN user by its ID and name")
-    public Void deleteVpnUser(@PathVariable String id, @PathVariable String user) {
+               description = "Deletes a specific VPN user by its ID and name",
+               tags = {"03 - users"})
+    public Void deleteVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
         service.deleteUser(id, user);
         return null;
     }

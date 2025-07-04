@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fathzer.odvpn.AbstractOnDemandVPNManager;
+import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
 import com.fathzer.odvpn.LocalDiskOnDemandVPNManager;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
@@ -69,8 +70,8 @@ public class VpnService {
             } else {
                 logger.warn("Configuration file {} not found in directory {}", configFile, dir);
             }
-        } catch (Exception e) {
-            logger.error("Failed to load VPN configuration from " + dir, e);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -86,15 +87,14 @@ public class VpnService {
         return vpn;
     }   
 
-    public Vpn create(String id, InstanceParameters dto, Path openVPNConfigPath, boolean force) throws IOException {
-        AbstractOnDemandVPNManager manager = new LocalDiskOnDemandVPNManager(settings, dto, id);
+    public void create(String id, InstanceParameters dto, Path openVPNConfigPath, boolean force) throws IOException {
+        AbstractOnDemandVPNManager manager = new LocalDiskOnDemandVPNManager(settings, id, dto);
         manager.init(openVPNConfigPath, force);
         storage.put(id, manager);
-        return toVpn(manager);
     }
 
-    public List<Vpn> findAll() {
-        return storage.values().stream().map(this::toVpn).toList();
+    public List<String> findAll() {
+        return storage.values().stream().map(AbstractOnDemandVPNManager::id).toList();
     }
 
     public boolean exists(String id) {
@@ -116,22 +116,23 @@ public class VpnService {
         storage.remove(id);
     }
 
-    public VPNStatus getStatus(String id) {
-        Vpn vpn = findVpnById(id);
-        return vpn.status();
+    public DetailedStatus getStatus(String id) throws IOException {
+        return getManager(id).getStatus();
     }
 
-    public VPNStatus startVpn(String id) {
-        Vpn vpn = findVpnById(id);
-        if (vpn.status() == VPNStatus.RUNNING) return VPNStatus.RUNNING;
-
-        vpn.setStatus(VPNStatus.STARTING);
-        // Simuler un démarrage (ici synchro pour simplicité)
-        vpn.setStatus(VPNStatus.RUNNING);
-        return vpn.status();
+    public void start(String id) throws IOException {
+        final AbstractOnDemandVPNManager manager = getManager(id);
+        Thread thread = new Thread(() -> {
+            try {
+                manager.start(null); //TODO
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+        thread.start();
     }
 
-    public VPNStatus stopVpn(String id) {
+    public VPNStatus stop(String id) throws IOException {
         Vpn vpn = findVpnById(id);
         if (vpn.status() == VPNStatus.STOPPED) return VPNStatus.STOPPED;
 
@@ -141,17 +142,17 @@ public class VpnService {
         return vpn.status();
     }
 
-    public List<String> listUsers(String id) {
+    public List<String> listUsers(String id) throws IOException {
         Vpn vpn = findVpnById(id);
         return List.of("TODO");
     }
 
-    public void createUser(String id, String user) {
+    public void createUser(String id, String user) throws IOException {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'createUser'");
     }
 
-    public void deleteUser(String id, String user) {
+    public void deleteUser(String id, String user) throws IOException {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'deleteUser'");
     }

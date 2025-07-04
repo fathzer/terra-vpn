@@ -17,7 +17,7 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
     private final Path root;
     private final Path sshPrivateKey;
 
-    public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, InstanceParameters config, String id) {
+    public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, String id, InstanceParameters config) throws IOException {
         super(id, config);
         if (settings == null) {
             throw new IllegalArgumentException("settings cannot be null");
@@ -31,7 +31,7 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
     }
 
     public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, String id) throws IOException {
-        this(settings, InstanceParametersParser.parse(settings.dataPath().resolve(id).resolve("config.json")), id);
+        this(settings, id, InstanceParametersParser.parse(settings.dataPath().resolve(id).resolve("config.json")));
     }
 
     private Path getVpsInfoPath() {

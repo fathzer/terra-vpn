@@ -22,12 +22,54 @@ public abstract class AbstractOnDemandVPNManager {
         }
     }
 
+    public static class DetailedStatus {
+        private boolean ready;
+        private boolean openvpnConfigured;
+        private boolean ddnsUpdated;
+        private boolean sshReady;
+        private boolean vpsCreated;
+        private boolean openvpnServerStarted;
+
+        private DetailedStatus() {
+            // Do nothing
+        }
+
+        private void setReady(boolean ready) {
+            this.ready = ready;
+            this.openvpnConfigured = ready;
+            this.ddnsUpdated = ready;
+            this.sshReady = ready;
+            this.vpsCreated = ready;
+            this.openvpnServerStarted = ready;
+        }
+
+        public boolean isReady() {
+            return ready;
+        }
+        public boolean isOpenvpnServerStarted() {
+            return openvpnServerStarted;
+        }
+        public boolean isOpenvpnConfigured() {
+            return openvpnConfigured;
+        }
+        public boolean isDdnsUpdated() {
+            return ddnsUpdated;
+        }
+        public boolean isSshReady() {
+            return sshReady;
+        }
+        public boolean isVpsCreated() {
+            return vpsCreated;
+        }
+    }
+
     public record VPSInfo(String id, String ip) {}
 
     protected final String id;
     protected final InstanceParameters config;
+    private DetailedStatus status;
 
-    protected AbstractOnDemandVPNManager(String id, InstanceParameters config) {
+    protected AbstractOnDemandVPNManager(String id, InstanceParameters config) throws IOException {
         if (!isValidId(id)) {
             throw new IllegalArgumentException("Invalid VPN ID: " + id+" (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)");
         }
@@ -142,8 +184,9 @@ public abstract class AbstractOnDemandVPNManager {
      * @throws IOException if an I/O error occurs
      */
     public void start(StartProgressListener progressListener) throws IOException {
-            final AtomicBoolean ddnsUpdated = new AtomicBoolean(false);
+        final AtomicBoolean ddnsUpdated = new AtomicBoolean(false);
         // Create the VPS if it does not exist
+        this.status = new DetailedStatus();
         final String ip;
         if (!isServerRunning()) {
             DNSUpdateProgressListener listener = new DNSUpdateProgressListener(ddnsUpdated, progressListener);
@@ -153,11 +196,13 @@ public abstract class AbstractOnDemandVPNManager {
         } else {
             ip = getLocalVPSInfo().ip();
         }
+        this.status.vpsCreated = true;
 
         // Update DDNS if needed
         if (!ddnsUpdated.get()) {
             updateDDNS(ip, progressListener);
         }
+        this.status.ddnsUpdated = true;
 
         // Wait for ssh connection is available
         final String keyPath = getSSHPrivateKeyPath().toAbsolutePath().toString();
@@ -167,6 +212,7 @@ public abstract class AbstractOnDemandVPNManager {
         try (Ssh ssh = builder.build()) {
             // Do nothing, we just connect to check if the connection is available
         }
+        this.status.sshReady = true;
 
         // Do openvpn configuration or restore it
         try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, getOpenVPNConfigPath(), getSSHPrivateKeyPath())) {
@@ -178,13 +224,16 @@ public abstract class AbstractOnDemandVPNManager {
                 openVPNConfigManager.initRemote(config);
                 openVPNConfigManager.save();
             }
+            this.status.openvpnConfigured = true;
             // Start the server
             progressListener.startingOpenVPNServer();
             openVPNConfigManager.start(config);
+            this.status.openvpnServerStarted = true;
         }
         String hostName = config.hostName();
         progressListener.waitingDNSPropagation();
         new DnsUpdateAwaiter(60, 5000).waitFor(hostName, ip);
+        this.status.ready = true;
         progressListener.ready();
     }
 
@@ -198,7 +247,7 @@ public abstract class AbstractOnDemandVPNManager {
         }
     }
 
-        private class DNSUpdateProgressListener implements Consumer<VPSProvider.VPSState> {
+    private class DNSUpdateProgressListener implements Consumer<VPSProvider.VPSState> {
         private final AtomicBoolean ddnsUpdated;
         private final StartProgressListener chained;
         
@@ -237,5 +286,15 @@ public abstract class AbstractOnDemandVPNManager {
         } else if (exists()) {
             erase();
         }
+    }
+
+    public DetailedStatus getStatus() throws IOException {
+        if (status == null) {
+            // TODO Maybe the status could be refined to be more accurate (is docker running, etc ...)
+            // Currently it simply checks that the VPS is running
+            this.status = new DetailedStatus();
+            this.status.setReady(isServerRunning());
+        }
+        return status;
     }
 }
