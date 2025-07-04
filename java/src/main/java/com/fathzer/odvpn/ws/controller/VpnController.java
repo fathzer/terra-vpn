@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -150,16 +151,23 @@ public class VpnController {
                tags = {"03 - users"})
     public ResponseEntity<?> createVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
         service.createUser(id, user);
-
         return ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).body(Map.of("user", user));
     }
 
-    @GetMapping("/{id}/users/{user}/config")
+    @GetMapping("/{id}/users/{user}/configuration")
     @Operation(summary = "Retrieves a specific VPN user configuration file", 
                description = "Retrieves a specific VPN user configuration file by its ID and name",
-               tags = {"03 - users"})
-    public String getVpnUserConfig(@PathVariable String id, @PathVariable String user) throws IOException {
-        throw new UnsupportedOperationException("Unimplemented method 'getVpnUserConfig'");
+               tags = {"03 - users"},
+               responses = {
+                   @ApiResponse(responseCode = "200", description = "Returns the configuration file", 
+                                content = @Content(mediaType = MediaType.TEXT_PLAIN_VALUE))
+               })
+    public ResponseEntity<byte[]> getVpnUserConfig(@PathVariable String id, @PathVariable String user) throws IOException {
+        final byte[] config = service.getUserConfig(id, user);
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_PLAIN)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + id + "-" + user + ".ovpn")
+                .body(config);
     }
 
     @DeleteMapping("/{id}/users/{user}")

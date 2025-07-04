@@ -55,8 +55,9 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
     - [ ] Refaire le backup de la configuration
   - [x] Implémenter la commande `delete`
   - [ ] Implémenter la commande `delete_user`
-  - [ ] Implémenter la commande `show users` qui renvoie la liste des utilisateurs.
-  - [ ] Implémenter la commande `show configuration` qui renvoie le fichier de configuration.
+  - [ ] Implémenter la commande `show-users` qui renvoie la liste des utilisateurs.
+  - [ ] Implémenter la commande `show-configuration` qui renvoie le fichier de configuration.
+  - [ ] Implémenter la commande `show-backup` qui renvoie le zip de la configuration de backup.
   - [ ] Implémenter une IHM web au moins pour start et stop.
 - [ ] Implémenter les web services
   - [x] implémenter la génération des clefs ssh au démarrage si nécessaire
@@ -68,6 +69,8 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [ ] Stop
   - [ ] Add/remove user
   - [x] List users
-  - [ ] Recup fichier de conf d'un utilisateur
+  - [x] Recup fichier de conf d'un utilisateur
+  - [ ] Recup de la configuration globale du serveur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
+- [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération en cours interdit d'autres opérations).
 - [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)

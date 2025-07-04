@@ -2,6 +2,7 @@ package com.fathzer.odvpn.ws;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -146,6 +147,12 @@ public class VpnService {
     public List<User> listUsers(String id) throws IOException {
         final AbstractOnDemandVPNManager manager = getManager(id);
         return manager.getOpenVPNManager().listUsers();
+    }
+
+    public byte[] getUserConfig(String id, String user) throws IOException {
+        final AbstractOnDemandVPNManager manager = getManager(id);
+        final List<String> config = manager.getOpenVPNManager().getUserConfigurationFile(user);
+        return String.join("\n", config).getBytes(StandardCharsets.UTF_8);
     }
 
     public void createUser(String id, String user) throws IOException {
