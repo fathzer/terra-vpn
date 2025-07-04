@@ -3,6 +3,7 @@ package com.fathzer.odvpn;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -166,8 +167,7 @@ public abstract class AbstractOnDemandVPNManager {
         }
     }
 
-    protected abstract Path getOpenVPNConfigPath();
-
+    protected abstract Path getOpenVPNConfigPath();    
     protected abstract Path getSSHPrivateKeyPath();
 
     private void checkConfiguration() throws IOException {
@@ -215,14 +215,14 @@ public abstract class AbstractOnDemandVPNManager {
         this.status.sshReady = true;
 
         // Do openvpn configuration or restore it
-        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, getOpenVPNConfigPath(), getSSHPrivateKeyPath())) {
-            if (openVPNConfigManager.hasBackup()) {
+        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, getSSHPrivateKeyPath())) {
+            if (Files.exists(getOpenVPNConfigPath())) {
                 progressListener.restoringOpenVPNConfiguration();
-                openVPNConfigManager.restore();
+                openVPNConfigManager.restore(getOpenVPNConfigPath());
             } else {
                 progressListener.creatingOpenVPNConfiguration();
                 openVPNConfigManager.initRemote(config);
-                openVPNConfigManager.save();
+                openVPNConfigManager.save(getOpenVPNConfigPath());
             }
             this.status.openvpnConfigured = true;
             // Start the server
@@ -296,5 +296,9 @@ public abstract class AbstractOnDemandVPNManager {
             this.status.setReady(isServerRunning());
         }
         return status;
+    }
+    
+    public OpenVPNManager getOpenVPNManager() throws IOException {
+        return new OpenVPNManager(getLocalVPSInfo().ip(), VPSProvider.getSSHUser(config.vps()), getSSHPrivateKeyPath());
     }
 }

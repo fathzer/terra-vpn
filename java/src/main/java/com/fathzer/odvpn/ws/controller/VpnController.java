@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
+import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ws.Vpn;
 import com.fathzer.odvpn.ws.VpnService;
@@ -133,12 +134,14 @@ public class VpnController {
         return null;
     }
 
+    private record Users(List<User> users) {}
+    
     @GetMapping("/{id}/users")
     @Operation(summary = "List all VPN users", 
                description = "List all VPN users",
                tags = {"03 - users"})
-    public List<String> listVpnUsers(@PathVariable String id) throws IOException {
-        return service.listUsers(id);
+    public Users listVpnUsers(@PathVariable String id) throws IOException {
+        return new Users(service.listUsers(id));
     }
 
     @PostMapping("/{id}/users/{user}")
@@ -151,12 +154,12 @@ public class VpnController {
         return ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).body(Map.of("user", user));
     }
 
-    @GetMapping("/{id}/users/{user}")
-    @Operation(summary = "Retrieves a specific VPN user", 
-               description = "Retrieves a specific VPN user by its ID and name",
+    @GetMapping("/{id}/users/{user}/config")
+    @Operation(summary = "Retrieves a specific VPN user configuration file", 
+               description = "Retrieves a specific VPN user configuration file by its ID and name",
                tags = {"03 - users"})
-    public String getVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
-        throw new UnsupportedOperationException("Unimplemented method 'getVpnUser'");
+    public String getVpnUserConfig(@PathVariable String id, @PathVariable String user) throws IOException {
+        throw new UnsupportedOperationException("Unimplemented method 'getVpnUserConfig'");
     }
 
     @DeleteMapping("/{id}/users/{user}")

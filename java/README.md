@@ -64,10 +64,10 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] Create/Update VPN config
   - [x] List VPN config
   - [x] Delete VPN config
-  - [ ] Start
+  - [x] Start
   - [ ] Stop
   - [ ] Add/remove user
-  - [ ] List users
+  - [x] List users
   - [ ] Recup fichier de conf d'un utilisateur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
 - [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)

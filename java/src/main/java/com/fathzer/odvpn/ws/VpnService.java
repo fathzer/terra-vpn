@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import com.fathzer.odvpn.AbstractOnDemandVPNManager;
 import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
+import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.LocalDiskOnDemandVPNManager;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
@@ -132,19 +133,19 @@ public class VpnService {
         thread.start();
     }
 
-    public VPNStatus stop(String id) throws IOException {
+    public void stop(String id) throws IOException {
+//TODO
         Vpn vpn = findVpnById(id);
-        if (vpn.status() == VPNStatus.STOPPED) return VPNStatus.STOPPED;
+        if (vpn.status() == VPNStatus.STOPPED) return;
 
         vpn.setStatus(VPNStatus.STOPPING);
         // Simuler un arrêt
         vpn.setStatus(VPNStatus.STOPPED);
-        return vpn.status();
     }
 
-    public List<String> listUsers(String id) throws IOException {
-        Vpn vpn = findVpnById(id);
-        return List.of("TODO");
+    public List<User> listUsers(String id) throws IOException {
+        final AbstractOnDemandVPNManager manager = getManager(id);
+        return manager.getOpenVPNManager().listUsers();
     }
 
     public void createUser(String id, String user) throws IOException {

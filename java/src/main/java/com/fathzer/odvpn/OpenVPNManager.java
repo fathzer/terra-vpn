@@ -4,10 +4,13 @@ import static com.fathzer.odvpn.Constants.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,34 +19,30 @@ import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ssh.Ssh;
 import com.fathzer.odvpn.utils.ListOutputStream;
 
-class OpenVPNManager implements AutoCloseable {
+/**
+ * Manages the openvpn server on the remote VPS
+ */
+public class OpenVPNManager implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OpenVPNManager.class);
     static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
 
-    private final Path localFile;
     private final Ssh ssh;
 
-    OpenVPNManager(String address, String sshUser, Path localFile, Path sshPrivateKey) throws IOException {
-        this.localFile = localFile.toAbsolutePath();
+    /**
+     * Creates a new OpenVPNManager
+     * @param address the address of the server
+     * @param sshUser the SSH user (e.g. root)
+     * @param sshPrivateKey the path to the SSH private key
+     * @throws IOException if an error occurs
+     */
+    OpenVPNManager(String address, String sshUser, Path sshPrivateKey) throws IOException {
         this.ssh = new Ssh.Builder(address, sshPrivateKey.toAbsolutePath().toString()).user(sshUser).build();
-    }
-
-    /** Checks if the local backup file exists
-     * @return true if the local backup file exists
-    */
-    boolean hasBackup() {
-        if (Boolean.getBoolean("forceVPNInit")) {
-            logger.info("Force init, skipping backup check");
-            return false;
-        } else {
-            return Files.exists(localFile);
-        }
     }
 
     /** Saves the remote openvpn backup config to the local file
      * @throws IOException if an error occurs
     */
-    void save() throws IOException {
+    public void save(Path localFile) throws IOException {
         doSSHCommand(ssh, "sudo tar -czf " + OPENVPN_TAR_GZ + " -C "+OPENVPN_VPS_FOLDER+" .");
         ssh.download(OPENVPN_TAR_GZ, localFile.toString());
     }
@@ -52,7 +51,7 @@ class OpenVPNManager implements AutoCloseable {
      * <br>Note: does not start the server
      * @throws IOException if an error occurs
     */
-    void restore() throws IOException {
+    public void restore(Path localFile) throws IOException {
         // Ensure the remote file does not exist (to avoid permission issues as it is created in sudo mode)
         doSSHCommand(ssh, "sudo rm -f " + OPENVPN_TAR_GZ);
         ssh.upload(localFile.toString(), OPENVPN_TAR_GZ);
@@ -71,7 +70,7 @@ class OpenVPNManager implements AutoCloseable {
      * <br>Note: does not start the server nor perform any backup
      * @throws IOException if an error occurs
     */
-    void initRemote(InstanceParameters config) throws IOException {
+    public void initRemote(InstanceParameters config) throws IOException {
         // Erase any previous configuration (if any)
         doSSHCommand(ssh, "sudo rm -rf " + OPENVPN_VPS_FOLDER);
         String initOpenVPNCommand = getInitOpenVPNCommand(config);
@@ -92,7 +91,10 @@ class OpenVPNManager implements AutoCloseable {
         return command.toString();
     }
 
-    void start(InstanceParameters config) throws IOException {
+    /** Starts the remote openvpn server
+     * @throws IOException if an error occurs
+    */
+    public void start(InstanceParameters config) throws IOException {
         // First stop the server if it is running
         final String stopServerCommand = "docker rm -f openvpn || true";
         doSSHCommand(ssh, stopServerCommand);
@@ -103,11 +105,38 @@ class OpenVPNManager implements AutoCloseable {
         logger.debug("Openvpn server is started");
     }
 
-    void addUser(String name) throws IOException {
+    public record User(String name, boolean valid, Instant expirationDate) {
+    }
+
+    /** Lists the remote openvpn server valid users
+     * @throws IOException if an error occurs
+    */
+    public List<User> listUsers() throws IOException {
+        try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
+            int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_listclients", outputStream, errorStream);
+            if (code != 0) {
+                throw new IOException("Failed to list users with exit code " + code);
+            }
+            List<String> lines = outputStream.getLines();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd HH:mm:ss yyyy z", Locale.US);
+            return lines.stream().skip(1).map(line -> {
+                String[] parts = line.split(",");
+                return new User(parts[0], parts[3].equals("VALID"), ZonedDateTime.parse(parts[2], formatter).toInstant());
+            }).toList();
+        }
+    }
+
+    /** Adds a new user to the remote openvpn server
+     * @throws IOException if an error occurs
+    */
+    public void addUser(String name) throws IOException {
         doSSHCommand(ssh, "docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " easyrsa build-client-full " + name + " nopass");
     }
 
-    List<String> getUserConfigurationFile(String name) throws IOException {
+    /** Gets the remote openvpn server configuration file for the given user
+     * @throws IOException if an error occurs
+    */
+    public List<String> getUserConfigurationFile(String name) throws IOException {
         try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
             int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_getclient " + name, outputStream, errorStream);
             if (code != 0) {

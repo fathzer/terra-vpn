@@ -13,33 +13,32 @@ import com.fathzer.odvpn.repository.InstanceParameters;
 
 public class UserCreator {
     private static final Logger logger = LoggerFactory.getLogger(UserCreator.class);
-    private final Path root;
+    private final InstanceParameters parameters;
     private final Path sshPrivateKey;
+    private final Path root;
 
-    public UserCreator(Path root, Path sshPrivateKey) {
-        this.root = root;
+    public UserCreator(InstanceParameters parameters, Path sshPrivateKey, Path root) {
+        this.parameters = parameters;
         this.sshPrivateKey = sshPrivateKey;
+        this.root = root;
     }
 
-
     public static void main(String[] args) throws IOException {
-        new UserCreator(Path.of("data/myvpn"), Path.of("ssh/id_rsa")).createUser("jma");
+        final InstanceParameters parameters = InstanceParametersParser.parse(Path.of("data/myvpn/config.json"));
+        new UserCreator(parameters, Path.of("ssh/id_rsa"), Path.of("data/myvpn")).createUser(args[0]);
     }
 
     public void createUser(String username) throws IOException {
-        // Load the instance parameters
-        InstanceParameters config = InstanceParametersParser.parse(root.resolve("config.json"));
-
         final String ip = getIp();
-        final String sshUser = VPSProvider.getSSHUser(config.vps());
-        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, root.resolve("openvpn.tar.gz"), sshPrivateKey)) {
+        final String sshUser = VPSProvider.getSSHUser(parameters.vps());
+        try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, sshPrivateKey)) {
             openVPNConfigManager.addUser(username);
             List<String> configFile = openVPNConfigManager.getUserConfigurationFile(username);
             Files.write(root.resolve(username + ".ovpn"), configFile);
             logger.info("User {} added", username);
             System.out.println(String.join("\n", configFile));
             logger.info("Saving openvpn configuration");
-            openVPNConfigManager.save();
+            openVPNConfigManager.save(root.resolve("openvpn.tar.gz"));
         }
     }
 
