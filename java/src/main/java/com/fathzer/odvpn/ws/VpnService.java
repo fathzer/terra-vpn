@@ -20,6 +20,7 @@ import com.fathzer.odvpn.AbstractOnDemandVPNManager;
 import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
 import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.LocalDiskOnDemandVPNManager;
+import com.fathzer.odvpn.StartProgressListener;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
 
@@ -122,11 +123,11 @@ public class VpnService {
         return getManager(id).getStatus();
     }
 
-    public void start(String id) throws IOException {
+    public void start(String id) {
         final AbstractOnDemandVPNManager manager = getManager(id);
         Thread thread = new Thread(() -> {
             try {
-                manager.start(null); //TODO
+                manager.start(new StartProgressListener() {});
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -156,12 +157,13 @@ public class VpnService {
     }
 
     public void createUser(String id, String user) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createUser'");
+        final AbstractOnDemandVPNManager manager = getManager(id);
+        manager.getOpenVPNManager().addUser(user);
     }
 
     public void deleteUser(String id, String user) throws IOException {
-        // TODO Auto-generated method stub
+        final AbstractOnDemandVPNManager manager = getManager(id);
         throw new UnsupportedOperationException("Unimplemented method 'deleteUser'");
+//        manager.getOpenVPNManager().deleteUser(user);
     }
 }

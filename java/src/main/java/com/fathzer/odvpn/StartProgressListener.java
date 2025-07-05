@@ -1,19 +1,19 @@
 package com.fathzer.odvpn;
 
 public interface StartProgressListener {
-    void creatingVPS(VPSProvider.VPSState state);
+    default void creatingVPS(VPSProvider.VPSState state) {}
 
-    void updatingDDNS(String hostName, String ip);
+    default void updatingDDNS(String hostName, String ip) {}
 
-    void waitingSSHConnection(String ip);
+    default void waitingSSHConnection(String ip) {}
 
-    void restoringOpenVPNConfiguration();
+    default void restoringOpenVPNConfiguration() {}
 
-    void creatingOpenVPNConfiguration();
+    default void creatingOpenVPNConfiguration() {}
 
-    void startingOpenVPNServer();
+    default void startingOpenVPNServer() {}
 
-    void waitingDNSPropagation();
+    default void waitingDNSPropagation() {}
 
-    void ready();
+    default void ready() {}
 }

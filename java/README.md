@@ -73,5 +73,5 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
     - [ ] Erreur 404 (et pas 500) si utilisateur inconnu.
   - [ ] Recup de la configuration globale du serveur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
-- [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération en cours interdit d'autres opérations).
+- [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération d'écriture en cours interdit d'autres opérations) avec un ReadWriteLock.
 - [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)

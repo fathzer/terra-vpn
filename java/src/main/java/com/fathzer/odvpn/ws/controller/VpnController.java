@@ -93,16 +93,16 @@ public class VpnController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Retrieves a specific VPN configuration", 
-               description = "Retrieves a specific VPN configuration by its ID",
+    @Operation(summary = "Retrieves a VPN configuration", 
+               description = "Retrieves a VPN configuration by its ID",
                tags = {"01 - vpns"})
     public Vpn getVpn(@PathVariable String id) {
         return service.findVpnById(id);
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Deletes a specific VPN configuration", 
-               description = "Deletes a specific VPN configuration by its ID",
+    @Operation(summary = "Deletes a VPN configuration", 
+               description = "Deletes a VPN configuration by its ID",
                tags = {"01 - vpns"})
     public Void deleteVpn(@PathVariable String id) throws IOException {
         service.delete(id, false);
@@ -110,16 +110,16 @@ public class VpnController {
     }
 
     @GetMapping("/{id}/status")
-    @Operation(summary = "Retrieves the status of a specific VPN", 
-               description = "Retrieves the status of a specific VPN by its ID",
+    @Operation(summary = "Retrieves the status of a VPN", 
+               description = "Retrieves the status of a VPN by its ID",
                tags = {"01 - vpns"})
     public DetailedStatus getStatus(@PathVariable String id) throws IOException {
         return service.getStatus(id);
     }
 
     @PostMapping("/{id}/start")
-    @Operation(summary = "Starts a specific VPN", 
-               description = "Starts a specific VPN by its ID",
+    @Operation(summary = "Starts a VPN", 
+               description = "Starts a VPN by its ID",
                tags = {"02 - start/stop"})
     public ResponseEntity<Void> startVpn(@PathVariable String id) throws IOException {
         service.start(id);
@@ -127,8 +127,8 @@ public class VpnController {
     }
 
     @PostMapping("/{id}/stop")
-    @Operation(summary = "Stops a specific VPN", 
-               description = "Stops a specific VPN by its ID",
+    @Operation(summary = "Stops a VPN", 
+               description = "Stops a VPN by its ID",
                tags = {"02 - start/stop"})
     public Void stopVpn(@PathVariable String id) throws IOException {
         service.stop(id);
@@ -146,8 +146,8 @@ public class VpnController {
     }
 
     @PostMapping("/{id}/users/{user}")
-    @Operation(summary = "Create a specific VPN user", 
-               description = "Create a specific VPN user by its ID and name",
+    @Operation(summary = "Create a VPN user", 
+               description = "Create a VPN user by its ID and name",
                tags = {"03 - users"})
     public ResponseEntity<?> createVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
         service.createUser(id, user);
@@ -155,8 +155,8 @@ public class VpnController {
     }
 
     @GetMapping(path = "/{id}/users/{user}/configuration")
-    @Operation(summary = "Retrieves a specific VPN user configuration file", 
-               description = "Retrieves a specific VPN user configuration file by its ID and name",
+    @Operation(summary = "Retrieves a VPN user configuration file", 
+               description = "Retrieves a VPN user configuration file by its ID and name",
                tags = {"03 - users"},
                responses = {
                    @ApiResponse(responseCode = "200", description = "Returns the configuration file", 
@@ -173,8 +173,8 @@ public class VpnController {
     }
 
     @DeleteMapping("/{id}/users/{user}")
-    @Operation(summary = "Deletes a specific VPN user", 
-               description = "Deletes a specific VPN user by its ID and name",
+    @Operation(summary = "Deletes a VPN user", 
+               description = "Deletes a VPN user by its ID and name",
                tags = {"03 - users"})
     public Void deleteVpnUser(@PathVariable String id, @PathVariable String user) throws IOException {
         service.deleteUser(id, user);

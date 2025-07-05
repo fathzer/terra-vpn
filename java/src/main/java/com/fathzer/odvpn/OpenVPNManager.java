@@ -4,10 +4,12 @@ import static com.fathzer.odvpn.Constants.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +29,22 @@ public class OpenVPNManager implements AutoCloseable {
     static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
 
     private final Ssh ssh;
+
+    public static class UnknownUserException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+
+        public UnknownUserException(String name) {
+            super(name);
+        }
+    }
+
+    public static class UserAlreadyExistsException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+
+        public UserAlreadyExistsException(String name) {
+            super(name);
+        }
+    }
 
     /**
      * Creates a new OpenVPNManager
@@ -118,25 +136,40 @@ public class OpenVPNManager implements AutoCloseable {
                 throw new IOException("Failed to list users with exit code " + code);
             }
             List<String> lines = outputStream.getLines();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd HH:mm:ss yyyy z", Locale.US);
+            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .parseLenient()
+                .appendPattern("MMM d HH:mm:ss yyyy z")
+                .toFormatter(Locale.ENGLISH);
             return lines.stream().skip(1).map(line -> {
-                String[] parts = line.split(",");
-                return new User(parts[0], parts[3].equals("VALID"), ZonedDateTime.parse(parts[2], formatter).toInstant());
+                final String[] parts = line.split(",");
+                final String dateString = parts[2].replaceAll("\\s+", " ").trim();
+                return new User(parts[0], parts[3].equals("VALID"), ZonedDateTime.parse(dateString, formatter).toInstant());
             }).toList();
         }
     }
 
     /** Adds a new user to the remote openvpn server
      * @throws IOException if an error occurs
+     * @throws UserAlreadyExistsException if the user already exists
     */
     public void addUser(String name) throws IOException {
+        final List<User> users = listUsers();
+        if (users.stream().anyMatch(user -> user.name().equals(name) && user.valid())) {
+            throw new UserAlreadyExistsException(name);
+        }
         doSSHCommand(ssh, "docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " easyrsa build-client-full " + name + " nopass");
     }
 
     /** Gets the remote openvpn server configuration file for the given user
      * @throws IOException if an error occurs
+     * @throws UnknownUserException if the user does not exist
     */
     public List<String> getUserConfigurationFile(String name) throws IOException {
+        final List<User> users = listUsers();
+        if (users.stream().noneMatch(user -> user.name().equals(name) && user.valid())) {
+            throw new UnknownUserException(name);
+        }
         try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
             int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_getclient " + name, outputStream, errorStream);
             if (code != 0) {
