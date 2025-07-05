@@ -154,13 +154,15 @@ public class VpnController {
         return ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).body(Map.of("user", user));
     }
 
-    @GetMapping("/{id}/users/{user}/configuration")
+    @GetMapping(path = "/{id}/users/{user}/configuration")
     @Operation(summary = "Retrieves a specific VPN user configuration file", 
                description = "Retrieves a specific VPN user configuration file by its ID and name",
                tags = {"03 - users"},
                responses = {
                    @ApiResponse(responseCode = "200", description = "Returns the configuration file", 
-                                content = @Content(mediaType = MediaType.TEXT_PLAIN_VALUE))
+                                content = @Content(mediaType = MediaType.TEXT_PLAIN_VALUE)),
+                   @ApiResponse(responseCode = "404", description = "VPN or user not found", 
+                                content = @Content(mediaType = "application/json"))
                })
     public ResponseEntity<byte[]> getVpnUserConfig(@PathVariable String id, @PathVariable String user) throws IOException {
         final byte[] config = service.getUserConfig(id, user);

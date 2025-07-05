@@ -70,6 +70,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [ ] Add/remove user
   - [x] List users
   - [x] Recup fichier de conf d'un utilisateur
+    - [ ] Erreur 404 (et pas 500) si utilisateur inconnu.
   - [ ] Recup de la configuration globale du serveur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
 - [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération en cours interdit d'autres opérations).
