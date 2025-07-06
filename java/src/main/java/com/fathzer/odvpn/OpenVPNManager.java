@@ -99,13 +99,13 @@ public class OpenVPNManager implements AutoCloseable {
 
     private String getInitOpenVPNCommand(InstanceParameters config) {
         final StringBuilder command = new StringBuilder("docker run -v ").append(OPENVPN_VPS_FOLDER).append(":/etc/openvpn --rm ").append(OPENVPN_IMAGE).append(" ovpn_genconfig");
-        if (config.dnsServers()!=null && config.dnsServers().length>0) {
+        if (config.vpn().dnsServers()!=null && config.vpn().dnsServers().length>0) {
             command.append(" -p 'block-outside-dns'");
-            for (String dns : config.dnsServers()) {
+            for (String dns : config.vpn().dnsServers()) {
                 command.append(" -p 'dhcp-option DNS ").append(dns).append("'");
             }
         }
-        command.append(" -u ").append(config.protocol()).append("://").append(config.hostName()).append(":").append(config.port());
+        command.append(" -u ").append(config.vpn().protocol()).append("://").append(config.vpn().hostname()).append(":").append(config.vpn().port());
         return command.toString();
     }
 
@@ -117,7 +117,7 @@ public class OpenVPNManager implements AutoCloseable {
         final String stopServerCommand = "docker rm -f openvpn || true";
         doSSHCommand(ssh, stopServerCommand);
         final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
-        final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.port(), "1194/"+config.protocol(), OPENVPN_IMAGE);
+        final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.vpn().port(), "1194/"+config.vpn().protocol(), OPENVPN_IMAGE);
         logger.debug("Starting openvpn server with command {}", launchServerCommand);
         doSSHCommand(ssh, launchServerCommand);
         logger.debug("Openvpn server is started");

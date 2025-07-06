@@ -6,12 +6,11 @@ import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import java.io.IOException;
-import java.util.Map;
 
 class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters> {
 
@@ -43,13 +42,13 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
 
         JsonNode vpnNode = root.get("vpn");
         if (vpnNode == null || vpnNode.isNull()) {
-            throw new InvalidFormatException(p, "Missing vpn configuration", null, Map.class);
+            throw new InvalidFormatException(p, "Missing vpn configuration", null, VPNConfig.class);
         }
-        Map<String, Object> vpn;
+        VPNConfig vpn;
         try {
-            vpn = mapper.convertValue(vpnNode, new TypeReference<Map<String, Object>>() {});
+            vpn = new VPNConfigDeserializer().deserialize(vpnNode.traverse(mapper), mapper.getDeserializationContext());
         } catch (IllegalArgumentException e) {
-            throw InvalidFormatException.from(p, "Invalid vpn configuration: " + e.getMessage(), vpnNode, Map.class);
+            throw InvalidFormatException.from(p, "Invalid vpn configuration: " + e.getMessage(), vpnNode, VPNConfig.class);
         }
 
         return new InstanceParameters(vps, ddns, vpn);
@@ -57,9 +56,8 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
 
     private <T> ObjectConfig<T> deserializeConfig(JsonNode node, Class<T> providerType, ObjectMapper mapper) throws IOException {
         try {
-            JsonParser parser = node.traverse(mapper);
             ObjectConfigDeserializer<T> deserializer = new ObjectConfigDeserializer<>(providerType);
-            return deserializer.deserialize(parser, mapper.getDeserializationContext());
+            return deserializer.deserialize(node.traverse(mapper), mapper.getDeserializationContext());
         } catch (IOException e) {
             throw InvalidFormatException.from(null, "Failed to deserialize configuration: " + e.getMessage(), node, providerType);
         }

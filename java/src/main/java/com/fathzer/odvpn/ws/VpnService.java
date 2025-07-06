@@ -135,13 +135,12 @@ public class VpnService {
     }
 
     public void stop(String id) throws IOException {
-//TODO
-        Vpn vpn = findVpnById(id);
-        if (vpn.status() == VPNStatus.STOPPED) return;
-
-        vpn.setStatus(VPNStatus.STOPPING);
-        // Simuler un arrêt
-        vpn.setStatus(VPNStatus.STOPPED);
+        final AbstractOnDemandVPNManager manager = getManager(id);
+        try {
+            manager.stop();
+        } catch (IllegalStateException e) {
+            throw new VpnException(HttpStatus.CONFLICT, e.getMessage());
+        }
     }
 
     public List<User> listUsers(String id) throws IOException {

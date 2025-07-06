@@ -26,8 +26,8 @@ class InstanceParametersDeserializerTest {
             assertEquals("lon1", params.vps().config().get("zone"));
             assertEquals("AfraidDDNS", params.ddns().provider().getClass().getSimpleName());
             assertEquals("afraidToken", params.ddns().config().get("token"));
-            assertEquals("terravpn.mydomain.com", params.vpn().get("hostname"));
-            assertEquals(List.of("86.54.11.100", "86.54.11.200"), params.vpn().get("dnsServers"));
+            assertEquals("terravpn.mydomain.com", params.vpn().hostname());
+            assertEquals(List.of("86.54.11.100", "86.54.11.200"), params.vpn().dnsServers());
         }
     }
 

@@ -52,13 +52,13 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [ ] Implémenter la commande `stop`
   - [ ] Implémenter la commande `create_user`
     - [x] Faire la création de l'utilisateur
-    - [ ] Refaire le backup de la configuration
+    - [x] Refaire le backup de la configuration
   - [x] Implémenter la commande `delete`
   - [ ] Implémenter la commande `delete_user`
   - [ ] Implémenter la commande `show-users` qui renvoie la liste des utilisateurs.
   - [ ] Implémenter la commande `show-configuration` qui renvoie le fichier de configuration.
   - [ ] Implémenter la commande `show-backup` qui renvoie le zip de la configuration de backup.
-  - [ ] Implémenter une IHM web au moins pour start et stop.
+- [ ] Implémenter une IHM web au moins pour start et stop.
 - [ ] Implémenter les web services
   - [x] implémenter la génération des clefs ssh au démarrage si nécessaire
     - [x] implémenter un générateur de clef ssh.
@@ -66,12 +66,12 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] List VPN config
   - [x] Delete VPN config
   - [x] Start
-  - [ ] Stop
+  - [x] Stop
   - [x] Add/remove user
   - [x] List users
   - [x] Recup fichier de conf d'un utilisateur
     - [x] Erreur 404 (et pas 500) si utilisateur inconnu.
   - [ ] Recup de la configuration globale du serveur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
-- [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération d'écriture en cours interdit d'autres opérations) avec un ReadWriteLock.
+- [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération d'écriture en cours interdit d'autres opérations) avec un ReadWriteLock. Attention, le start s'éxécute dans un thread à part dans les WS.
 - [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)

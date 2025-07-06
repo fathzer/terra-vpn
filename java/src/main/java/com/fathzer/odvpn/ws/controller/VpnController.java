@@ -56,6 +56,7 @@ public class VpnController {
                        @ApiResponse(responseCode = "201", description = "VPN is created"),
                        @ApiResponse(responseCode = "200", description = "VPN is updated"),
                        @ApiResponse(responseCode = "400", description = ILLEGAL_PARAM, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class))),
+                       @ApiResponse(responseCode = "409", description = "VPN is running", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class))),
                        @ApiResponse(responseCode = "425", description = CONFLICT, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class)))
                    })
     public ResponseEntity<Void> createVpn(
@@ -168,6 +169,7 @@ public class VpnController {
                responses = {
                        @ApiResponse(responseCode = "204", description = "VPN stopped"),
                        @ApiResponse(responseCode = "404", description = "VPN not found", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class))),
+                       @ApiResponse(responseCode = "409", description = "VPN is not running", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class))),
                        @ApiResponse(responseCode = "425", description = CONFLICT, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class)))
                    })
     public Void stopVpn(@PathVariable String id) throws IOException {

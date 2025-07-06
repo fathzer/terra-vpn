@@ -55,6 +55,11 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
     }
 
     @Override
+    protected void deleteLocalVPSInfo() throws IOException {
+        Files.delete(getVpsInfoPath());
+    }
+
+    @Override
     protected boolean exists() throws IOException {
         return Files.exists(root);
     }

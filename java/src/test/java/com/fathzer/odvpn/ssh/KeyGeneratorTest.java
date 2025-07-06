@@ -84,7 +84,6 @@ class KeyGeneratorTest {
 
         assertNotNull(e, "Exponent 'e' should not be null");
         assertNotNull(n, "Modulus 'n' should not be null");
-        System.out.println(n.bitLength());
         assertTrue(n.bitLength() >= 2048, "Modulus length should be >= 2048 bits");
     }
 

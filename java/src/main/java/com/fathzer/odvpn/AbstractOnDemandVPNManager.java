@@ -72,7 +72,7 @@ public abstract class AbstractOnDemandVPNManager {
     protected final InstanceParameters config;
     private DetailedStatus status;
 
-    protected AbstractOnDemandVPNManager(String id, InstanceParameters config) throws IOException {
+    protected AbstractOnDemandVPNManager(String id, InstanceParameters config) {
         if (!isValidId(id)) {
             throw new IllegalArgumentException("Invalid VPN ID: " + id+" (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)");
         }
@@ -117,7 +117,7 @@ public abstract class AbstractOnDemandVPNManager {
 
     /**
      * Gets the VPS information (id and ip address) stored in the persistent storage.
-     * @return the VPS information
+     * @return the VPS information or null if the VPS does not exist in persistent storage
      * @throws IOException if an I/O error occurs
      */
     protected abstract VPSInfo getLocalVPSInfo() throws IOException;
@@ -128,6 +128,12 @@ public abstract class AbstractOnDemandVPNManager {
      * @throws IOException if an I/O error occurs
      */
     protected abstract void saveLocalVPSInfo(VPSInfo vpsInfo) throws IOException;
+
+    /**
+     * Deletes the VPS information in the persistent storage.
+     * @throws IOException if an I/O error occurs
+     */
+    protected abstract void deleteLocalVPSInfo() throws IOException;
 
     /**
      * Checks if the VPS exists in the persistent storage.
@@ -232,7 +238,7 @@ public abstract class AbstractOnDemandVPNManager {
             openVPNConfigManager.start(config);
             this.status.openvpnServerStarted = true;
         }
-        String hostName = config.hostName();
+        String hostName = config.vpn().hostname();
         progressListener.waitingDNSPropagation();
         new DnsUpdateAwaiter(60, 5000).waitFor(hostName, ip);
         this.status.ready = true;
@@ -241,8 +247,8 @@ public abstract class AbstractOnDemandVPNManager {
 
     private void updateDDNS(String ip, StartProgressListener progressListener) throws IOException {
         try {
-            progressListener.updatingDDNS(config.hostName(), ip);
-            config.ddns().provider().updateDns(config.ddns().config(), config.hostName(), ip);
+            progressListener.updatingDDNS(config.vpn().hostname(), ip);
+            config.ddns().provider().updateDns(config.ddns().config(), config.vpn().hostname(), ip);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new InterruptedIOException();
@@ -274,9 +280,15 @@ public abstract class AbstractOnDemandVPNManager {
 
     /** Stops the VPN server
      * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException if the VPS is not running
      */
     public void stop() throws IOException {
-        throw new UnsupportedOperationException();
+        VPSInfo vpsInfo = getLocalVPSInfo();
+        if (vpsInfo == null) {
+            throw new IllegalStateException("VPS is not running");
+        }
+        config.vps().provider().deleteVPS(config, vpsInfo.id());
+        deleteLocalVPSInfo();
     }
 
     /** Deletes the VPN configuration

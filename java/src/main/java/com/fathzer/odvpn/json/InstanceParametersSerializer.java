@@ -7,6 +7,7 @@ import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.Registerable;
 
 import java.io.IOException;
@@ -31,6 +32,7 @@ public class InstanceParametersSerializer extends JsonSerializer<InstanceParamet
         // Create serializers with type-safe providerId functions
         JsonSerializer<ObjectConfig<DynamicDNSProvider>> ddnsSerializer = new ObjectConfigSerializer<>(createProviderId());
         JsonSerializer<ObjectConfig<VPSProvider>> vpsSerializer = new ObjectConfigSerializer<>(createProviderId());
+        JsonSerializer<VPNConfig> vpnSerializer = new VPNConfigSerializer();
 
         gen.writeFieldName("ddns");
         ddnsSerializer.serialize(value.ddns(), gen, serializers);
@@ -39,7 +41,7 @@ public class InstanceParametersSerializer extends JsonSerializer<InstanceParamet
         vpsSerializer.serialize(value.vps(), gen, serializers);
         
         gen.writeFieldName("vpn");
-        gen.writeObject(value.vpn());
+        vpnSerializer.serialize(value.vpn(), gen, serializers);
         
         gen.writeEndObject();
     }
