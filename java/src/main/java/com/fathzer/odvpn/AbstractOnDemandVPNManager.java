@@ -3,12 +3,14 @@ package com.fathzer.odvpn;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ssh.Ssh;
 import com.fathzer.odvpn.utils.DnsUpdateAwaiter;
@@ -297,8 +299,28 @@ public abstract class AbstractOnDemandVPNManager {
         }
         return status;
     }
-    
-    public OpenVPNManager getOpenVPNManager() throws IOException {
+
+    protected OpenVPNManager getOpenVPNManager() throws IOException {
         return new OpenVPNManager(getLocalVPSInfo().ip(), VPSProvider.getSSHUser(config.vps()), getSSHPrivateKeyPath());
+    }
+    
+    public List<User> getUsers() throws IOException {
+        return getOpenVPNManager().getUsers();
+    }
+
+    public void addUser(String name) throws IOException {
+        final OpenVPNManager openVPNManager = getOpenVPNManager();
+        openVPNManager.addUser(name);
+        openVPNManager.save(getOpenVPNConfigPath());
+    }
+
+    public void deleteUser(String name) throws IOException {
+        final OpenVPNManager openVPNManager = getOpenVPNManager();
+        openVPNManager.deleteUser(name);
+        openVPNManager.save(getOpenVPNConfigPath());
+    }
+
+    public byte[] getUserConfig(String name) throws IOException {
+        return String.join("\n", getOpenVPNManager().getUserConfigurationFile(name)).getBytes(StandardCharsets.UTF_8);
     }
 }

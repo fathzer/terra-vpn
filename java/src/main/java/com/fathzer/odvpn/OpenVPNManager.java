@@ -4,7 +4,6 @@ import static com.fathzer.odvpn.Constants.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -13,6 +12,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +129,7 @@ public class OpenVPNManager implements AutoCloseable {
     /** Lists the remote openvpn server valid users
      * @throws IOException if an error occurs
     */
-    public List<User> listUsers() throws IOException {
+    public List<User> getUsers() throws IOException {
         try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
             int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_listclients", outputStream, errorStream);
             if (code != 0) {
@@ -154,11 +154,25 @@ public class OpenVPNManager implements AutoCloseable {
      * @throws UserAlreadyExistsException if the user already exists
     */
     public void addUser(String name) throws IOException {
-        final List<User> users = listUsers();
+        final List<User> users = getUsers();
         if (users.stream().anyMatch(user -> user.name().equals(name) && user.valid())) {
             throw new UserAlreadyExistsException(name);
         }
         doSSHCommand(ssh, "docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " easyrsa build-client-full " + name + " nopass");
+    }
+
+    /** Deletes a user from the remote openvpn server
+     * @param name the name of the user
+     * @throws IOException if an error occurs
+     * @throws UserAlreadyExistsException if the user does not exists
+    */
+    public void deleteUser(String name) throws IOException {
+        final List<User> users = getUsers();
+        final Optional<User> user = users.stream().filter(u -> u.name().equals(name)).findAny();
+        if (user.isEmpty()) {
+            throw new UnknownUserException(name);
+        }
+        doSSHCommand(ssh, "echo yes | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_revokeclient " + name);
     }
 
     /** Gets the remote openvpn server configuration file for the given user
@@ -166,7 +180,7 @@ public class OpenVPNManager implements AutoCloseable {
      * @throws UnknownUserException if the user does not exist
     */
     public List<String> getUserConfigurationFile(String name) throws IOException {
-        final List<User> users = listUsers();
+        final List<User> users = getUsers();
         if (users.stream().noneMatch(user -> user.name().equals(name) && user.valid())) {
             throw new UnknownUserException(name);
         }
@@ -193,5 +207,4 @@ public class OpenVPNManager implements AutoCloseable {
             throw new IOException("Command " + command + " failed with exit code " + code);
         }
     }
-
 }

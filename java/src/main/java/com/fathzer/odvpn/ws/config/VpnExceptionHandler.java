@@ -1,7 +1,6 @@
 package com.fathzer.odvpn.ws.config;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.springframework.http.HttpHeaders;
@@ -14,6 +13,7 @@ import org.springframework.web.context.request.WebRequest;
 
 import com.fathzer.odvpn.OpenVPNManager;
 import com.fathzer.odvpn.ws.VpnService;
+import com.fathzer.odvpn.ws.controller.ErrorObject;
 
 @RestControllerAdvice
 public class VpnExceptionHandler {
@@ -38,10 +38,7 @@ public class VpnExceptionHandler {
         final ResponseEntity.BodyBuilder response = ResponseEntity.status(statusFunction.apply(ex));
         if (acceptHeader == null || acceptHeader.contains(MediaType.APPLICATION_JSON_VALUE) || acceptHeader.contains(MediaType.ALL_VALUE)) {
             response.contentType(MediaType.APPLICATION_JSON);
-            return response.body(Map.of(
-                "error", messageFunction.apply(ex),
-                "timestamp", Instant.now().toString()
-            ));
+            return response.body(new ErrorObject(messageFunction.apply(ex), Instant.now().toString()));
         }
         if (acceptHeader.contains(MediaType.TEXT_PLAIN_VALUE)) {
             return response.contentType(MediaType.TEXT_PLAIN).body("Error: " + messageFunction.apply(ex));
