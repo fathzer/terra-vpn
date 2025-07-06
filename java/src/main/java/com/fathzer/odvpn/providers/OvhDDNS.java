@@ -30,7 +30,7 @@ public class OvhDDNS extends DynamicDNSProvider {
     }
 
     @Override
-    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException, InterruptedException {
+    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException {
         final String user = configuration.get(VAR_USER);
         final String password = configuration.get(VAR_PASSWORD);
 

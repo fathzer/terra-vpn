@@ -27,7 +27,7 @@ public class AfraidDDNS extends DynamicDNSProvider {
     }
 
     @Override
-    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException, InterruptedException {
+    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException {
         final String token = configuration.get(VAR_TOKEN);
         final URI uri = URI.create("https://freedns.afraid.org/dynamic/update.php?" + token + "&address=" + ip);
         final HttpRequest request = HttpRequest.newBuilder().uri(uri).build();

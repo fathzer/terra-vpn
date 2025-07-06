@@ -1,11 +1,11 @@
 package com.fathzer.odvpn;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -157,19 +157,20 @@ public abstract class AbstractOnDemandVPNManager {
 
     /**
      * Initializes the configuration.
+     * @param openVpnConfigPath the path to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
      * @param force if true, the configuration file will be overwritten if it already exists and the server is not running
      * @throws IOException if an I/O error occurs
      * @throws ConfigurationException if the configuration is invalid
      * @throws IllegalStateException if the configuration file already exists and force is false or if the server is running.
      */
     public void init(Path openVpnConfigPath, boolean force) throws IOException {
-        checkConfiguration();
         if (exists() && !force) {
             throw new IllegalStateException("Configuration file already exists");
         } else {
             if (isServerRunning()) {
                 throw new IllegalStateException("Can't change configuration of a running server");
             } else {
+                checkConfiguration(openVpnConfigPath);
                 save(openVpnConfigPath);
             }
         }
@@ -178,10 +179,14 @@ public abstract class AbstractOnDemandVPNManager {
     protected abstract Path getOpenVPNConfigPath();    
     protected abstract Path getSSHPrivateKeyPath();
 
-    private void checkConfiguration() throws IOException {
+    private void checkConfiguration(Path openVpnConfigPath) throws IOException {
         // First check the vps configuration
-        List<String> errors = config.vps().provider().checkConfiguration(config.vps());
-        // TODO check DDNS and openvpn configuration
+        final List<String> errors = new LinkedList<>();
+        errors.addAll(config.vps().provider().checkConfiguration(config.vps()));
+        errors.addAll(config.ddns().provider().checkConfiguration(config.ddns().config(), config.vpn().hostname()));
+        if (openVpnConfigPath != null) {
+            // TODO check openVPN configuration
+        }
         if (!errors.isEmpty()) {
             throw new ConfigurationException(errors);
         }
@@ -246,13 +251,8 @@ public abstract class AbstractOnDemandVPNManager {
     }
 
     private void updateDDNS(String ip, StartProgressListener progressListener) throws IOException {
-        try {
-            progressListener.updatingDDNS(config.vpn().hostname(), ip);
-            config.ddns().provider().updateDns(config.ddns().config(), config.vpn().hostname(), ip);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new InterruptedIOException();
-        }
+        progressListener.updatingDDNS(config.vpn().hostname(), ip);
+        config.ddns().provider().updateDns(config.ddns().config(), config.vpn().hostname(), ip);
     }
 
     private class DNSUpdateProgressListener implements Consumer<VPSProvider.VPSState> {

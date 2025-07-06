@@ -14,13 +14,13 @@ import org.junit.jupiter.api.Test;
 class AfraidDDNSTest {
 
     @Test
-    void testUpdateDns() throws Exception {
+    void testUpdateDns() {
         @SuppressWarnings("unchecked")
         final HttpResponse<String> response = mock(HttpResponse.class);
         final AtomicReference<HttpRequest> lastRequest = new AtomicReference<>();
         final AfraidDDNS afraidDDNS = new AfraidDDNS() {
             @Override
-            protected HttpResponse<String> doRequest(final HttpRequest request) throws IOException, InterruptedException {
+            protected HttpResponse<String> doRequest(final HttpRequest request) throws IOException {
                 lastRequest.set(request);
                 return response;
             }
