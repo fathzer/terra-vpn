@@ -1,19 +1,16 @@
-package com.fathzer.odvpn;
+package com.fathzer.odvpn.utils;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import static com.fathzer.odvpn.VPNConfigValidator.*;
+import static com.fathzer.odvpn.utils.TarGzUtils.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.junit.jupiter.api.Test;
 
-class VPNConfigValidatorTest {
+class TarGzUtilsTest {
     private static final String FOLDER_NAME = "folder";
     private static final String TEST_FILE = "/test.tar.gz";
     private static final String EMPTY_FILE = "empty.txt";
@@ -44,6 +41,8 @@ class VPNConfigValidatorTest {
             assertNotNull(is, "Test file not found");
             assertTrue(contains(is, FOLDER_NAME, true), 
                     "The tar.gz should contain folder");
+        }
+        try (InputStream is = getClass().getResourceAsStream(TEST_FILE)) {
             assertTrue(contains(is, FOLDER_NAME + "/", true), 
                 "The tar.gz should contain folder");
         }
@@ -51,28 +50,13 @@ class VPNConfigValidatorTest {
     
     @Test
     void testFileContent() throws IOException {
-        try (InputStream is = getClass().getResourceAsStream(TEST_FILE);
-             GZIPInputStream gzis = new GZIPInputStream(is);
-             TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
-            
-            TarArchiveEntry entry;
-            boolean fileFound = false;
-            String searched = normalizePath(FOLDER_FILE, false);
-            
-            while ((entry = tais.getNextEntry()) != null) {
-                String entryName = normalizePath(entry.getName(), entry.isDirectory());
-                if (searched.equals(entryName)) {
-                    fileFound = true;
-                    byte[] content = new byte[(int) entry.getSize()];
-                    tais.read(content);
-                    String actualContent = new String(content, StandardCharsets.UTF_8);
-                    assertEquals(EXPECTED_CONTENT, actualContent.trim(), 
-                        "File content does not match expected value");
-                    break;
-                }
+        try (InputStream is = getClass().getResourceAsStream(TEST_FILE)) {
+            // Test reading file content using getEntryStream
+            try (InputStream fileStream = getEntryStream(is, FOLDER_FILE, false)) {
+                assertNotNull(fileStream, "File should be found");
+                String content = new String(fileStream.readAllBytes(), StandardCharsets.UTF_8);
+                assertEquals(EXPECTED_CONTENT, content.trim(), "File content should match");
             }
-            
-            assertTrue(fileFound, FOLDER_FILE + " not found in the archive");
         }
     }
 }

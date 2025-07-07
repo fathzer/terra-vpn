@@ -73,6 +73,24 @@
 	<build>
 		<plugins>
 			<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Exclude all apache compress compressors -->
+                        <exclude>org/apache/commons/compress/compressors/**</exclude>
+                        <!-- Exclude all apache compress archivers -->
+                        <exclude>org/apache/commons/compress/archivers/**</exclude>
+                    </excludes>
+                    <includes>
+                        <!-- Include only the apache compress tar archiver -->
+                        <include>org/apache/commons/compress/archivers/tar/**</include>
+                        <!-- Include the apache compress archivers base package for common classes -->
+                        <include>org/apache/commons/compress/archivers/*.class</include>
+                    </includes>
+                </configuration>
+            </plugin>
+			<plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
