@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
@@ -26,6 +29,8 @@ import com.fathzer.odvpn.utils.Registerable;
         classes = {VPSProvider.class}
 )
 public class VultrVPS extends VPSProvider {
+    private static final Logger logger = LoggerFactory.getLogger(VultrVPS.class);
+
     private static final String DEFAULT_INSTANCE_TYPE = "vc2-1c-0.5gb";
     private static final String DEFAULT_ZONE = "ewr";
 
@@ -91,6 +96,7 @@ public class VultrVPS extends VPSProvider {
                 instanceName,
                 "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));
             final String id = client.create(request);
+            logger.info("Vultr instance created with ID {} start waiting for it to be ready", id);
             VPSState state;
             for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {
                 if (!state.status().equals(Status.IP_READY)) {
@@ -103,6 +109,7 @@ public class VultrVPS extends VPSProvider {
                     throw new InterruptedIOException();
                 }
             }
+            logger.info("Vultr instance {} is ready", id);
             return state;
         }
     }
@@ -123,6 +130,7 @@ public class VultrVPS extends VPSProvider {
     public void deleteVPS(InstanceParameters parameters, String id) throws IOException {
         try (VultrClient client = new VultrClient(parameters.vps().config().get(TOKEN_VAR))) {
             client.delete(id);
+            logger.info("Vultr instance {} deleted", id);
         }
     }
 }

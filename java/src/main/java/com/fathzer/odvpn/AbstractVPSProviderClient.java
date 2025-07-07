@@ -16,7 +16,7 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         private final int statusCode;
 
         private ResponseException(int statusCode, String message) {
-            super(message);
+            super(statusCode + ": " + message);
             this.statusCode = statusCode;
         }
 

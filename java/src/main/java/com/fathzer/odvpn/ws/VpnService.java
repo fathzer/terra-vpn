@@ -127,8 +127,8 @@ public class VpnService {
         Thread thread = new Thread(() -> {
             try {
                 manager.start(new StartProgressListener() {});
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+            } catch (Throwable e) {
+                logger.error("Failed to start VPN " + id, e);
             }
         });
         thread.start();
