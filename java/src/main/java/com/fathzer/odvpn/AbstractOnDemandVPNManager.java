@@ -176,16 +176,29 @@ public abstract class AbstractOnDemandVPNManager {
         }
     }
 
+    /**
+     * Gets the path to the local OpenVPN configuration file.
+     * @return the path to the OpenVPN configuration file
+     */
     protected abstract Path getOpenVPNConfigPath();    
+    /**
+     * Gets the path to the SSH private key.
+     * @return the path to the SSH private key
+     */
     protected abstract Path getSSHPrivateKeyPath();
 
     private void checkConfiguration(Path openVpnConfigPath) throws IOException {
         // First check the vps configuration
         final List<String> errors = new LinkedList<>();
         errors.addAll(config.vps().provider().checkConfiguration(config.vps()));
+        // Then check the ddns configuration
         errors.addAll(config.ddns().provider().checkConfiguration(config.ddns().config(), config.vpn().hostname()));
-        if (openVpnConfigPath != null) {
-            // TODO check openVPN configuration
+        // Finally, check the openVpnConfiguration
+        if (openVpnConfigPath == null) {
+            openVpnConfigPath = getOpenVPNConfigPath();
+        }
+        if (Files.exists(openVpnConfigPath)) {
+            errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigPath));
         }
         if (!errors.isEmpty()) {
             throw new ConfigurationException(errors);

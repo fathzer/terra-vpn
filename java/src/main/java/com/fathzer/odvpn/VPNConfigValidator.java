@@ -1,61 +1,69 @@
 package com.fathzer.odvpn;
 
+import static com.fathzer.odvpn.utils.TarGzUtils.*;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.GZIPInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.odvpn.repository.VPNConfig.Protocol;
 
-public class VPNConfigValidator {
+final class VPNConfigValidator {
     private VPNConfigValidator() {}
 
-    /**
-     * Checks if the specified tar.gz file contains a pki/issued directory with the given certificate file.
-     *
-     * @param tarGzFile The tar.gz file to check
-     * @param targetPath The path of the file to look for in the tar.gz file
-     * @return true if the file exists in the tar.gz file, false otherwise
-     * @throws IOException if there's an error reading the tar.gz file
-     */
-    /**
-     * Checks if the specified tar.gz input stream contains a file with the given path.
-     * @param tarGzStream The input stream of the tar.gz file to check
-     * @param targetPath The path of the file to look for in the tar.gz file
-     * @return true if the file exists in the tar.gz file, false otherwise
-     * @throws IOException if there's an error reading the tar.gz file
-     * @throws IllegalArgumentException if targetPath is null or empty
-     */
-    public static boolean contains(InputStream tarGzStream, String targetPath, boolean directory) throws IOException {
-        if (targetPath == null || targetPath.trim().isEmpty()) {
-            throw new IllegalArgumentException("Target path cannot be null or empty");
+    static List<String> check(VPNConfig config, Path openvpnConfigPath) throws IOException {
+        final List<String> errors = new LinkedList<>();
+        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
+            if (!contains(is, "pki/issued/"+config.hostname()+".crt", false)) {
+                errors.add("OpenVPN configuration file does not contain the certificate for " + config.hostname());
+            }
         }
-        targetPath = normalizePath(targetPath, directory);
-        try (GZIPInputStream gzis = new GZIPInputStream(tarGzStream);
-             TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
-            
-            TarArchiveEntry entry;
-            while ((entry = tais.getNextEntry()) != null) {
-                String entryName = normalizePath(entry.getName(), entry.isDirectory());
-                System.out.println("Entry: " + entryName);
-                if (targetPath.equals(entryName)) {
-                    return true;
+        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
+            if (!contains(is, "pki/private/"+config.hostname()+".key", false)) {
+                errors.add("OpenVPN configuration file does not contain the private key for " + config.hostname());
+            }
+        }
+        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
+            try (InputStream ovpnConfIs = getEntryStream(is, "openvpn.conf", false)) {
+                if (ovpnConfIs == null) {
+                    errors.add("OpenVPN configuration file does not contain openvpn.conf file");
+                } else {
+                    Protocol protocol = getProtocol(ovpnConfIs, errors);
+                    if (protocol != config.protocol()) {
+                        errors.add("OpenVPN configuration file and vpn configuration do not contain the same protocol");
+                    }
                 }
             }
         }
-        return false;
+        return errors;
     }
 
-    public static String normalizePath(String entryName, boolean directory) {
-        entryName = entryName.replace('\\', '/');
-        if (!entryName.startsWith("./")) {
-            entryName = "./" + entryName;
+    private static Protocol getProtocol(InputStream is, List<String> errors) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            Optional<String> protocolLine = reader.lines().filter(line -> line.startsWith("proto ")).findFirst();
+            if (protocolLine.isEmpty()) {
+                return Protocol.UDP;
+            }
+            String[] elements = protocolLine.get().split(" ");
+            if (elements.length != 2) {
+                errors.add("OpenVPN configuration file contains a malformed protocol line: " + protocolLine.get());
+                return null;
+            }
+            String protocol = elements[1];
+            try {
+                return Protocol.valueOf(protocol.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                errors.add("OpenVPN configuration file contains an unknown protocol " + protocol);
+                return null;
+            }
         }
-        if (!directory && entryName.endsWith("/")) {
-            entryName = entryName.substring(0, entryName.length() - 1);
-        } else if (directory && !entryName.endsWith("/")) {
-            entryName += "/";
-        }
-        return entryName;
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import com.fathzer.odvpn.AbstractOnDemandVPNManager;
 import com.fathzer.odvpn.OpenVPNManager;
 import com.fathzer.odvpn.ws.VpnService;
 import com.fathzer.odvpn.ws.controller.ErrorObject;
@@ -31,6 +32,11 @@ public class VpnExceptionHandler {
     @ExceptionHandler(OpenVPNManager.UserAlreadyExistsException.class)
     public ResponseEntity<Object> handleUserAlreadyExists(OpenVPNManager.UserAlreadyExistsException ex, WebRequest request) {
         return handleException(ex, request, e -> HttpStatus.CONFLICT, e -> "User " + e.getMessage() + " already exists");
+    }
+
+    @ExceptionHandler(AbstractOnDemandVPNManager.ConfigurationException.class)
+    public ResponseEntity<Object> handleConfigurationException(AbstractOnDemandVPNManager.ConfigurationException ex, WebRequest request) {
+        return handleException(ex, request, e -> HttpStatus.BAD_REQUEST, e -> e.getMessage());
     }
 
     private <T extends Throwable> ResponseEntity<Object> handleException(T ex, WebRequest request, Function<T, HttpStatus> statusFunction, Function<T, String> messageFunction) {

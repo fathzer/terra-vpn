@@ -30,6 +30,15 @@ public abstract class DynamicDNSProvider implements Provider {
      */
     public abstract void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException;
 
+    /**
+     * Checks the configuration.
+     * <br>The default implementation tries to update the DNS record to its current value (or to "127.0.0.1" if the host name cannot be resolved).
+     * If it fails, it means the configuration is invalid.
+     * @param configuration the configuration
+     * @param hostName the host name
+     * @return a list of errors
+     * @throws IOException if an I/O error occurs
+     */
     public List<String> checkConfiguration(Map<String, String> configuration, String hostName) throws IOException {
         String ip;
         try {
