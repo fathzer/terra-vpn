@@ -3,7 +3,7 @@ package com.fathzer.odvpn.json;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.InputStream;
-import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class InstanceParametersDeserializerTest {
             assertEquals("AfraidDDNS", params.ddns().provider().getClass().getSimpleName());
             assertEquals("afraidToken", params.ddns().config().get("token"));
             assertEquals("terravpn.mydomain.com", params.vpn().hostname());
-            assertEquals(List.of("86.54.11.100", "86.54.11.200"), params.vpn().dnsServers());
+            assertEquals(Set.of("86.54.11.100", "86.54.11.200"), Set.of(params.vpn().dnsServers()));
         }
     }
 

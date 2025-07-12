@@ -143,13 +143,13 @@ class HetznerClient extends AbstractVPSProviderClient {
     }
 
     String create(InstanceCreationRequest request) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/instances")).POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(request))).build());
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/servers")).POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(request))).build());
         final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceFullResponse.class).instance();
         return instanceResponse.id;
     }
 
     VPSState getState(String id) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).build());
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/servers/" + id)).build());
         final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceFullResponse.class).instance();
         final Status status;
         if (instanceResponse==null || instanceResponse.mainIp()==null) {
@@ -163,7 +163,7 @@ class HetznerClient extends AbstractVPSProviderClient {
     }
 
     void delete(String id) throws IOException {
-        this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).DELETE().build());
+        this.doRequest(this.newRequest(URI.create(API_URL + "/servers/" + id)).DELETE().build());
     }
 }
 
