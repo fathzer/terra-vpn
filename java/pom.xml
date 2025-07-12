@@ -8,15 +8,16 @@
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.3</version>
 	</parent>
-	<artifactId>terravpn</artifactId>
+	<artifactId>odvpn</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
     <properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<check-dependencies-java-version>21</check-dependencies-java-version>
 	    <maven.compiler.release>21</maven.compiler.release>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.organization>fathzer</sonar.organization>
-		<customized.jar.name>terravpn</customized.jar.name>
+		<customized.jar.name>odvpn</customized.jar.name>
 	</properties>
 
     <dependencies>

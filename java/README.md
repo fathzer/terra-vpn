@@ -14,8 +14,17 @@ Si le dossier existe déjà on quitte en erreur, sauf si l'option `-f` est prés
 ### java -jar odvpn.jar start *name*
 Créer l'infrastructure si besoin, puis démarre le serveur VPN.
 
+### java -jar odvpn.jar status *name*
+Affiche le statut du serveur VPN
+
 ### java -jar odvpn.jar create_user *name* *user_name*
 Crée un utilisateur sur le serveur VPN.
+
+### java -jar odvpn.jar delete_user *name* *user_name*
+Supprime un utilisateur sur le serveur VPN.
+
+### java -jar odvpn.jar user_conf *name* *user_name*
+Affiche le contenu du ficher de configuration du client OpenVPN.
 
 ### java -jar odvpn.jar stop *name*
 Arrête le serveur VPN et supprime l'infrastructure
@@ -74,4 +83,9 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [ ] Recup de la configuration globale du serveur
 - [x] Faire une couche d'abstraction de AbstractOnDemandVPNManager pour stocker la configuration ailleurs que sur le disque ... maybe in the future.
 - [ ] Implémenter des exclusions mutuelles entre les opérations (toute opération d'écriture en cours interdit d'autres opérations) avec un ReadWriteLock. Attention, le start s'éxécute dans un thread à part dans les WS.
-- [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens)
+- [ ] Documenter la limitation sur les noms de VPN (must start with a letter or a number and contain only letters, numbers, dots, underscores and hyphens).
+- [ ] Donner le choix entre OpenVPN et Wireguard.
+  Quelques notes sur Wireguard:
+  - Il y a une image Docker activement maintenue par le projet https://github.com/wg-easy/wg-easy. Pas pratique, pratique, mais jouable ;-)
+  - Il faut commencer par créer un network Docker avec `docker network create -d bridge --ipv6 --subnet 10.42.42.0/24 --subnet fdcc:ad94:bacf:61a3::/64 wg`
+

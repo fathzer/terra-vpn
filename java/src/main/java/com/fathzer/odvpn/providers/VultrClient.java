@@ -33,8 +33,7 @@ class VultrClient extends AbstractVPSProviderClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record SshKey(@JsonProperty("id") String id,
-        @JsonProperty("name") String name,
-        @JsonProperty("ssh_key") String key) {}
+        @JsonProperty("name") String name) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record SshKeysResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
@@ -81,8 +80,7 @@ class VultrClient extends AbstractVPSProviderClient {
     /**
      * Checks if an SSH key with the given name exists in the Vultr account.
      * @param keyName The name of the SSH key to check
-     * @return An empty Optional if the key exists exactly once, "Unknown key" if not found,
-     *         or "Duplicated key" if multiple keys with the same name exist
+     * @return The ID of the SSH key if it exists exactly once.
      * @throws IOException if an I/O error occurs
      * @throws IllegalArgumentException if the key is unknown or duplicated
      */
