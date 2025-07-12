@@ -4,39 +4,20 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpRequest.Builder;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
-class VultrClient extends AbstractVPSProviderClient {
+public class VultrClient extends BasicVPSProviderClient {
     private static final String API_URL = "https://api.vultr.com/v2";
-    private final String token;
-
-    VultrClient(String token) {
-        super();
-        this.token = token;
-    }
-
-    @Override
-    protected Builder newRequest(URI uri) {
-        return super.newRequest(uri).header("Authorization", "Bearer " + this.token);
-    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ErrorResponse(@JsonProperty("error") String error,
         @JsonProperty("status") int status) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SshKey(@JsonProperty("id") String id,
-        @JsonProperty("name") String name) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SshKeysResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record Region(@JsonProperty("id") String id) {}
@@ -77,26 +58,13 @@ class VultrClient extends AbstractVPSProviderClient {
         }
     }
 
-    /**
-     * Checks if an SSH key with the given name exists in the Vultr account.
-     * @param keyName The name of the SSH key to check
-     * @return The ID of the SSH key if it exists exactly once.
-     * @throws IOException if an I/O error occurs
-     * @throws IllegalArgumentException if the key is unknown or duplicated
-     */
-    String getSSHKeyId(String keyName) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/ssh-keys")).build());
-        final SshKeysResponse keysResponse = this.objectMapper.readValue(response.body(), SshKeysResponse.class);
-        // Filter keys by name (case-sensitive)
-        final List<SshKey> matchingKeys = keysResponse.sshKeys.stream()
-            .filter(key -> keyName.equals(key.name))
-            .toList();
-        if (matchingKeys.isEmpty()) {
-            throw new IllegalArgumentException("Unknown key");
-        } else if (matchingKeys.size() > 1) {
-            throw new IllegalArgumentException("Duplicated key");
-        }
-        return matchingKeys.get(0).id;
+    public VultrClient(String token) {
+        super(token);
+    }
+
+    @Override
+    protected String getRootUrl() {
+        return API_URL;
     }
 
     void checkZone(String zone) throws IOException {

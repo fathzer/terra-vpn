@@ -4,40 +4,20 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpRequest.Builder;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
-class HetznerClient extends AbstractVPSProviderClient {
+public class HetznerClient extends BasicVPSProviderClient {
     private static final String API_URL = "https://api.hetzner.cloud/v1";
-    private final String token;
-
-    HetznerClient(String token) {
-        super();
-        this.token = token;
-    }
-
-    @Override
-    protected Builder newRequest(URI uri) {
-        return super.newRequest(uri).header("Authorization", "Bearer " + this.token);
-    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ErrorResponse(@JsonProperty("error") String error,
         @JsonProperty("status") int status) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SshKey(@JsonProperty("id") String id,
-        @JsonProperty("name") String name,
-        @JsonProperty("ssh_key") String key) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SshKeysResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record Region(@JsonProperty("id") String id) {}
@@ -78,26 +58,18 @@ class HetznerClient extends AbstractVPSProviderClient {
         }
     }
 
-    /**
-     * Checks if an SSH key with the given name exists in the Hetzner account.
-     * @param keyName The name of the SSH key to check
-     * @return The id of the SSH key if the key exists exactly once
-     * @throws IOException if an I/O error occurs
-     * @throws IllegalArgumentException if the key is unknown or duplicated
-     */
-    String getSSHKeyId(String keyName) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/ssh-keys")).build());
-        final SshKeysResponse keysResponse = this.objectMapper.readValue(response.body(), SshKeysResponse.class);
-        // Filter keys by name (case-sensitive)
-        final List<SshKey> matchingKeys = keysResponse.sshKeys.stream()
-            .filter(key -> keyName.equals(key.name))
-            .toList();
-        if (matchingKeys.isEmpty()) {
-            throw new IllegalArgumentException("Unknown key");
-        } else if (matchingKeys.size() > 1) {
-            throw new IllegalArgumentException("Duplicated key");
-        }
-        return matchingKeys.get(0).id;
+    public HetznerClient(String token) {
+        super(token);
+    }
+
+    @Override
+    protected String getRootUrl() {
+        return API_URL;
+    }
+
+    @Override
+    protected String getSshKeysPath() {
+        return "/ssh_keys";
     }
 
     void checkZone(String zone) throws IOException {
@@ -129,17 +101,17 @@ class HetznerClient extends AbstractVPSProviderClient {
 
     @Override
     protected AuthenticationException getAuthenticationException(HttpResponse<String> response) throws IOException {
-        return new AuthenticationException(response.statusCode(), this.getErrorMessage(response));
+        return new AuthenticationException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
     }
 
     @Override
     protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) throws IOException {
-        return new ErrorResponseException(response.statusCode(), this.getErrorMessage(response));
+        return new ErrorResponseException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
     }
 
     @Override
     protected ServerErrorException getServerErrorException(HttpResponse<String> response) throws IOException {
-        return new ServerErrorException(response.statusCode(), this.getErrorMessage(response));
+        return new ServerErrorException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
     }
 
     String create(InstanceCreationRequest request) throws IOException {

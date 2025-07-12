@@ -5,12 +5,30 @@ import java.io.InterruptedIOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpRequest.Builder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 
 public abstract class AbstractVPSProviderClient implements AutoCloseable {
+    public static interface Authentication {
+        public Builder authenticate(Builder builder);
+    }
+
+    public static final class TokenAuthentication implements Authentication {
+        private final String token;
+
+        public TokenAuthentication(String token) {
+            this.token = token;
+        }
+
+        @Override
+        public Builder authenticate(Builder builder) {
+            return builder.header("Authorization", "Bearer " + this.token);
+        }
+    }
+
     public static class ResponseException extends IOException {
         private static final long serialVersionUID = 1L;
         private final int statusCode;
@@ -51,19 +69,21 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
 
     protected final HttpClient client;
     protected final ObjectMapper objectMapper;
+    protected final Authentication authentication;
     
-    protected AbstractVPSProviderClient() {
+    protected AbstractVPSProviderClient(Authentication authentication) {
         this.client = HttpClient.newHttpClient();
         this.objectMapper = new ObjectMapper();
+        this.authentication = authentication;
+    }
+
+    protected Builder newRequest(URI uri) {
+        return this.authentication.authenticate(HttpRequest.newBuilder().uri(uri));
     }
 
     @Override
     public void close() {
         this.client.close();
-    }
-
-    protected HttpRequest.Builder newRequest(URI uri) {
-        return HttpRequest.newBuilder().uri(uri);
     }
 
     protected HttpResponse<String> doRequest(HttpRequest request) throws IOException {
