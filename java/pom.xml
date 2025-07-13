@@ -91,6 +91,8 @@
                         <exclude>org/apache/commons/compress/archivers/**</exclude>
                     </excludes>
                     <includes>
+                        <!-- Include all application classes -->
+                        <include>**/*.class</include>
                         <!-- Include only the apache compress tar archiver -->
                         <include>org/apache/commons/compress/archivers/tar/**</include>
                         <!-- Include the apache compress archivers base package for common classes -->
@@ -102,7 +104,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.fathzer.terravpn.ws.TerraVpnApplication</mainClass>
+                    <mainClass>com.fathzer.odvpn.ODVpn</mainClass>
                 </configuration>
             </plugin>
 			<plugin>
@@ -111,7 +113,7 @@
                 <version>3.2.5</version>
                 <configuration>
                     <argLine>
-                        -javaagent:"${settings.localRepository}/net/bytebuddy/byte-buddy-agent/1.17.6/byte-buddy-agent-1.17.6.jar"
+                        @{argLine} -javaagent:"${settings.localRepository}/net/bytebuddy/byte-buddy-agent/1.17.6/byte-buddy-agent-1.17.6.jar"
                     </argLine>
                 </configuration>
             </plugin>
