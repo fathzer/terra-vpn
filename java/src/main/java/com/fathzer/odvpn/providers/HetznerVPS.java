@@ -32,7 +32,7 @@ public class HetznerVPS extends VPSProvider {
     private static final Logger logger = LoggerFactory.getLogger(HetznerVPS.class);
 
     private static final String DEFAULT_INSTANCE_TYPE = "cpx11";
-    private static final String DEFAULT_ZONE = "nbg1";
+    private static final String DEFAULT_REGION = "nbg1";
 
     private static final String TOKEN_VAR = "token";
     private static final String SSH_KEY_NAME_VAR = "ssh_key_name";
@@ -67,16 +67,16 @@ public class HetznerVPS extends VPSProvider {
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
-            // Check if zone exists
-            String zone = config.config().getOrDefault(ZONE_VAR, DEFAULT_ZONE);
+            // Check if region exists
+            String region = config.config().getOrDefault(REGION_VAR, DEFAULT_REGION);
             try {
-                client.checkZone(zone);
+                client.checkRegion(region);
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
-            // Check if instance type exists in the zone
+            // Check if instance type exists in the location
             try {
-                client.checkInstanceType(zone, config.config().getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE));
+                client.checkInstanceType(region, config.config().getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE));
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
@@ -91,7 +91,7 @@ public class HetznerVPS extends VPSProvider {
             final String sshKeyId = client.getSSHKeyId(config.get(SSH_KEY_NAME_VAR));
             final String instanceName = getInstanceName();
             InstanceCreationRequest request = new InstanceCreationRequest(
-                config.getOrDefault(ZONE_VAR, DEFAULT_ZONE),
+                config.getOrDefault(REGION_VAR, DEFAULT_REGION),
                 config.getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE),
                 instanceName,
                 "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));

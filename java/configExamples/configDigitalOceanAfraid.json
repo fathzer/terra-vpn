@@ -4,7 +4,7 @@
         "config": {
             "token": "${DIGITALOCEAN_TOKEN}",
             "instance_type": "s-1vcpu-1gb",
-            "zone": "lon1"
+            "region": "lon1"
         }
     },
     "ddns": {

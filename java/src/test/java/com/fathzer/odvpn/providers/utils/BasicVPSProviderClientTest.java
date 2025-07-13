@@ -19,99 +19,30 @@ import com.fathzer.odvpn.AbstractVPSProviderClient;
 
 class BasicVPSProviderClientTest {
 
-    @Mock
-    private HttpClient httpClient;
-    
-    @Mock
-    private HttpResponse<String> httpResponse;
-    
-    private TestClient testClient;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        MockitoAnnotations.openMocks(this).close();
-        testClient = new TestClient("test-token");
-        testClient.setHttpClient(httpClient);
-        
-        when(httpResponse.statusCode()).thenReturn(200);
-        when(httpResponse.body()).thenReturn("""
-            {
-                "ssh_keys": [
-                    {"id": "key1", "name": "test-key", "expires": "2025-01-01"},
-                    {"id": "key2", "name": "another-key"}
-                ]
-            }
-            """);
-        when(httpClient.<String>send(any(), any())).thenReturn(httpResponse);
-    }
-
-    @Test
-    void testGetSshKeyId() throws Exception {
-        String keyId = testClient.getSSHKeyId("test-key");
-        assertEquals("key1", keyId);
-        
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/ssh-keys") &&
-                   request.method().equals("GET") &&
-                   request.headers().firstValue("Authorization").orElse("").equals("Bearer test-token");
-        }), any());
-    }
-    
-    @Test
-    void testGetSshKeyId_UnknownKey() {
-        assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("nonexistent-key"));
-    }
-    
-    @Test
-    void testGetSshKeyId_DuplicateKey() {
-        when(httpResponse.body()).thenReturn("""
-            {
-                "ssh_keys": [
-                    {"id": "key1", "name": "duplicate-key"},
-                    {"id": "key2", "name": "duplicate-key"}
-                ]
-            }
-            """);
-        assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("duplicate-key"));
-    }
-    
-    @Test
-    void testGetSshKeyId_WithCustomResponseType() throws Exception {
-        String keyId = testClient.getSSHKeyId("test-key", TestSshKeysResponse.class, TestSshKeysResponse::sshKeys);
-        assertEquals("key1", keyId);
-    }
-    
-    @Test
-    void testGetSshKeysPath() {
-        try (TestClient testClient2 = new TestClient("token", "/custom-keys")) {
-            assertEquals("/custom-keys", testClient2.getSshKeysPath());
-        }
-    }
-    
     // Test implementation of BasicVPSProviderClient
     private static class TestClient extends BasicVPSProviderClient {
-        private final String customSshKeysPath;
+        private String customSshKeysPath;
+        private String customRegionsPath;
         
         public TestClient(String token) {
-            this(token, null);
-        }
-        
-        public TestClient(String token, String customSshKeysPath) {
             super(token);
-            this.customSshKeysPath = customSshKeysPath;
         }
-        
+
         @Override
         protected String getRootUrl() {
             return "https://api.example.com";
         }
-        
+            
         @Override
         protected String getSshKeysPath() {
             return customSshKeysPath != null ? customSshKeysPath : super.getSshKeysPath();
         }
-        
+            
+        @Override
+        protected String getRegionsPath() {
+            return customRegionsPath != null ? customRegionsPath : super.getRegionsPath();
+        }
+            
         public void setHttpClient(HttpClient client) {
             try {
                 java.lang.reflect.Field clientField = AbstractVPSProviderClient.class.getDeclaredField("client");
@@ -123,29 +54,105 @@ class BasicVPSProviderClientTest {
         }
     }
     
-    // Test implementation of SshKeysResponse
-    public static class TestSshKeysResponse {
-        private List<SshKey> sshKeys;
+    @Mock
+    private HttpClient httpClient;
+    @Mock
+    private HttpResponse<String> httpResponse;
+    private TestClient testClient;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this).close();
+        testClient = new TestClient("test-token");
+        testClient.setHttpClient(httpClient);
         
-        // Default constructor for Jackson
-        public TestSshKeysResponse() {}
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpClient.<String>send(any(), any())).thenReturn(httpResponse);
+    }
+
+    @Test
+    void testGetSshKeyId() throws Exception {
+        when(httpResponse.body()).thenReturn("""
+            {
+                "ssh_keys": [
+                    {"id": "key1", "name": "test-key", "expires": "2025-01-01"},
+                    {"id": "key2", "name": "another-key"},
+                    {"id": "key3", "name": "another-key"}
+                ]
+            }
+            """);
+        String keyId = testClient.getSSHKeyId("test-key");
+        assertEquals("key1", keyId);
         
-        public TestSshKeysResponse(List<SshKey> sshKeys) {
-            this.sshKeys = sshKeys;
-        }
+        verify(httpClient).send(argThat(req -> {
+            HttpRequest request = (HttpRequest) req;
+            return request.uri().toString().equals("https://api.example.com/ssh-keys") &&
+                   request.method().equals("GET") &&
+                   request.headers().firstValue("Authorization").orElse("").equals("Bearer test-token");
+        }), any());
+
+        // Test with unknown key
+        assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("nonexistent-key"));
+        // Test with duplicate key
+        assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("another-key"));
+
+        // Test with custom path
+        testClient.customSshKeysPath = "/custom-keys";
+        testClient.getSSHKeyId("test-key");
+        verify(httpClient).send(argThat(req -> {
+            HttpRequest request = (HttpRequest) req;
+            return request.uri().toString().equals("https://api.example.com/custom-keys");
+        }), any());
+
+        // Test with custom response type
+        when(httpResponse.body()).thenReturn("""
+            { "keys": [{"id": "key1", "name": "test-key"}] }
+        """);
+        record TestSshKeysResponse(List<SshKey> keys) {}
+        keyId = testClient.getSSHKeyId("test-key", TestSshKeysResponse.class, TestSshKeysResponse::keys);
+        assertEquals("key1", keyId);
+    }
+    
+    @Test
+    void testCheckRegion() throws Exception {
+        // Given
+        when(httpResponse.body()).thenReturn("""
+            {
+                "regions": [
+                    {"name": "nyc1"},
+                    {"name": "sgp1"},
+                    {"name": "lon1"}
+                ]
+            }
+            """);
         
-        @com.fasterxml.jackson.annotation.JsonProperty("ssh_keys")
-        public List<SshKey> getSshKeys() {
-            return sshKeys;
-        }
+        // Known region
+        testClient.checkRegion("sgp1");
         
-        public void setSshKeys(List<SshKey> sshKeys) {
-            this.sshKeys = sshKeys;
-        }
+        // Verify the request was made correctly
+        verify(httpClient).send(argThat(req -> {
+            HttpRequest request = (HttpRequest) req;
+            return request.uri().toString().equals("https://api.example.com/regions") &&
+                   request.method().equals("GET") &&
+                   request.headers().firstValue("Authorization").orElse("").equals("Bearer test-token");
+        }), any());
+
+        // Unknown region
+        assertThrows(IllegalArgumentException.class, () -> testClient.checkRegion("par2"));
+
+        // Test with custom path
+        testClient.customRegionsPath = "/custom-regions";
+        testClient.checkRegion("lon1");
+        verify(httpClient).send(argThat(req -> {
+            HttpRequest request = (HttpRequest) req;
+            return request.uri().toString().equals("https://api.example.com/custom-regions");
+        }), any());
         
-        // For backward compatibility with method reference
-        public List<SshKey> sshKeys() {
-            return sshKeys;
-        }
+        // Custom response type
+        when(httpResponse.body()).thenReturn("""
+            { "locations": ["nyc1", "sgp1"] }
+        """);
+        record CustomRegionsResponse(List<String> locations) {}
+        testClient.checkRegion("sgp1", CustomRegionsResponse.class, r -> r.locations().stream());
     }
 }

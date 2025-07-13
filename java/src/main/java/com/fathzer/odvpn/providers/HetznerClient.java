@@ -11,40 +11,33 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
+import com.fathzer.odvpn.providers.utils.Region;
 
 public class HetznerClient extends BasicVPSProviderClient {
     private static final String API_URL = "https://api.hetzner.cloud/v1";
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ErrorResponse(@JsonProperty("error") String error,
-        @JsonProperty("status") int status) {}
+    private record ErrorResponse(String error, int status) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Region(@JsonProperty("id") String id) {}
+    private record Plan(String id, List<String> locations) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record RegionsResponse(@JsonProperty("regions") List<Region> regions) {}
+    private record PlansResponse(List<Plan> plans) {}
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Plan(@JsonProperty("id") String id, 
-        @JsonProperty("locations") List<String> locations) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record PlansResponse(@JsonProperty("plans") List<Plan> plans) {}
-
-    record InstanceCreationRequest(@JsonProperty("region") String region,
-        @JsonProperty("plan") String plan,
-        @JsonProperty("label") String label,
-        @JsonProperty("image_id") String imageId,
-        @JsonProperty("backups") String backups,
-        @JsonProperty("tags") List<String> tags,
+    record InstanceCreationRequest(String region,
+        String plan,
+        String label,
+        String imageId,
+        String backups,
+        List<String> tags,
         @JsonProperty("sshkey_id") List<String> sshkeyIds) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record InstanceFullResponse(@JsonProperty("instance") InstanceResponse instance) {}
+    record InstanceFullResponse(InstanceResponse instance) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record InstanceResponse(@JsonProperty("id") String id,
+    record InstanceResponse(String id,
         @JsonProperty("main_ip") String mainIp,
         @JsonProperty("power_status") String powerStatus,
         @JsonProperty("server_status") String serverStatus) {
@@ -72,12 +65,16 @@ public class HetznerClient extends BasicVPSProviderClient {
         return "/ssh_keys";
     }
 
-    void checkZone(String zone) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/regions")).build());
-        final RegionsResponse regionsResponse = this.objectMapper.readValue(response.body(), RegionsResponse.class);
-        if (regionsResponse.regions().stream().map(Region::id).noneMatch(zone::equals)) {
-            throw new IllegalArgumentException("Unknown zone " + zone);
-        }
+    @Override
+    protected String getRegionsPath() {
+        return "/locations";
+    }
+
+    @Override
+    public void checkRegion(String region) throws IOException {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record LocationsResponse(@JsonProperty("locations") List<Region> regions) {}
+        checkRegion(region, LocationsResponse.class, l -> l.regions().stream().map(Region::name));
     }
 
     void checkInstanceType(String zone, String instanceType) throws IOException {

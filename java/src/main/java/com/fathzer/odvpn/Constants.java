@@ -8,8 +8,8 @@ public class Constants {
 
     /** The Terraform instance type variable name */
     public static final String INSTANCE_TYPE_VAR = "instance_type";
-    /** The Terraform zone variable name */
-    public static final String ZONE_VAR = "zone";
+    /** The Terraform location variable name */
+    public static final String REGION_VAR = "region";
     /** The Terraform root volume size variable name */
     public static final String ROOT_VOLUME_SIZE_GB_VAR = "root_volume_size_gb";
 

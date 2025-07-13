@@ -3,7 +3,7 @@
         "providerId": "digitalOcean",
         "config": {
             "token": "${DIGITALOCEAN_TOKEN}",
-            "zone": "fra1"
+            "region": "fra1"
         }
     },
     "ddns": {

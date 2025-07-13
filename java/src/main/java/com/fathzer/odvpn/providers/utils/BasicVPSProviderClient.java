@@ -5,10 +5,11 @@ import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import com.fathzer.odvpn.AbstractVPSProviderClient;
 
-public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient{
+public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
 
     protected BasicVPSProviderClient(String token) {
         super(new TokenAuthentication(token));
@@ -53,6 +54,22 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient{
             throw new IllegalArgumentException("Duplicated key");
         }
         return matchingKeys.get(0).id();
+    }
+
+    protected String getRegionsPath() {
+        return "/regions";
+    }
+
+    public void checkRegion(String region) throws IOException {
+        checkRegion(region, RegionsResponse.class, r -> r.regions().stream().map(Region::name));
+    }
+
+    protected <T> void checkRegion(String region, Class<T> responseType, Function<T, Stream<String>> regionsGetter) throws IOException {
+         final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getRegionsPath())).build());
+        final T locationsResponse = this.objectMapper.readValue(response.body(), responseType);
+        if (regionsGetter.apply(locationsResponse).noneMatch(region::equals)) {
+            throw new IllegalArgumentException("Unknown region " + region);
+        }
     }
 
 }
