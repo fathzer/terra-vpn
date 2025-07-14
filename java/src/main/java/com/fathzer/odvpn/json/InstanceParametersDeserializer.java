@@ -1,7 +1,6 @@
 package com.fathzer.odvpn.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
@@ -36,9 +35,16 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
 
         JsonNode vpsNode = root.get("vps");
         if (vpsNode == null || vpsNode.isNull()) {
-            throw new InvalidFormatException(p, "Missing vps configuration", null, ObjectConfig.class);
+            throw new InvalidFormatException(p, "Missing vps configuration", null, VPSProvider.class);
         }
-        ObjectConfig<VPSProvider> vps = deserializeConfig(vpsNode, VPSProvider.class, mapper);
+        VPSProvider<?> vps;
+        try {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            VPSProviderDeserializer<?> deserializer = new VPSProviderDeserializer(VPSProvider.class);
+            vps = deserializer.deserialize(vpsNode.traverse(mapper), mapper.getDeserializationContext());
+        } catch (Exception e) {
+            throw InvalidFormatException.from(p, "Invalid vps configuration: " + e.getMessage(), vpsNode, VPSProvider.class);
+        }
 
         JsonNode vpnNode = root.get("vpn");
         if (vpnNode == null || vpnNode.isNull()) {
@@ -54,11 +60,11 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
         return new InstanceParameters(vps, ddns, vpn);
     }
 
-    private <T> ObjectConfig<T> deserializeConfig(JsonNode node, Class<T> providerType, ObjectMapper mapper) throws IOException {
+        private <T> ObjectConfig<T> deserializeConfig(JsonNode node, Class<T> providerType, ObjectMapper mapper) throws IOException {
         try {
             ObjectConfigDeserializer<T> deserializer = new ObjectConfigDeserializer<>(providerType);
             return deserializer.deserialize(node.traverse(mapper), mapper.getDeserializationContext());
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw InvalidFormatException.from(null, "Failed to deserialize configuration: " + e.getMessage(), node, providerType);
         }
     }

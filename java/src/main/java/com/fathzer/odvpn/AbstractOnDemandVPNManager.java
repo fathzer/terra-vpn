@@ -112,7 +112,7 @@ public abstract class AbstractOnDemandVPNManager {
      */
     public boolean isServerRunning() throws IOException {
         VPSInfo vpsInfo = getLocalVPSInfo();
-        return vpsInfo!=null && config.vps().provider().exists(config, vpsInfo.id());
+        return vpsInfo!=null && config.vps().exists(vpsInfo.id());
     }
 
     /**
@@ -190,7 +190,7 @@ public abstract class AbstractOnDemandVPNManager {
     private void checkConfiguration(Path openVpnConfigPath) throws IOException {
         // First check the vps configuration
         final List<String> errors = new LinkedList<>();
-        errors.addAll(config.vps().provider().checkConfiguration(config.vps()));
+        errors.addAll(config.vps().checkConfiguration());
         // Then check the ddns configuration
         errors.addAll(config.ddns().provider().checkConfiguration(config.ddns().config(), config.vpn().hostname()));
         // Finally, check the openVpnConfiguration
@@ -216,7 +216,7 @@ public abstract class AbstractOnDemandVPNManager {
         final String ip;
         if (!isServerRunning()) {
             DNSUpdateProgressListener listener = new DNSUpdateProgressListener(ddnsUpdated, progressListener);
-            VPSProvider.VPSState vpsState = config.vps().provider().createVPS(config, listener);
+            VPSProvider.VPSState vpsState = config.vps().createVPS(listener);
             ip = vpsState.ip();
             saveLocalVPSInfo(new VPSInfo(vpsState.id(), ip));
         } else {
@@ -232,7 +232,7 @@ public abstract class AbstractOnDemandVPNManager {
 
         // Wait for ssh connection is available
         final String keyPath = getSSHPrivateKeyPath().toAbsolutePath().toString();
-        final String sshUser = VPSProvider.getSSHUser(config.vps());
+        final String sshUser = config.vps().getSSHUser();
         Ssh.Builder builder = new Ssh.Builder(ip, keyPath).user(sshUser).maxTryCount(24);
         progressListener.waitingSSHConnection(ip);
         try (Ssh ssh = builder.build()) {
@@ -300,7 +300,7 @@ public abstract class AbstractOnDemandVPNManager {
         if (vpsInfo == null) {
             throw new IllegalStateException("VPS is not running");
         }
-        config.vps().provider().deleteVPS(config, vpsInfo.id());
+        config.vps().deleteVPS(vpsInfo.id());
         deleteLocalVPSInfo();
     }
 
@@ -326,7 +326,7 @@ public abstract class AbstractOnDemandVPNManager {
     }
 
     protected OpenVPNManager getOpenVPNManager() throws IOException {
-        return new OpenVPNManager(getLocalVPSInfo().ip(), VPSProvider.getSSHUser(config.vps()), getSSHPrivateKeyPath());
+        return new OpenVPNManager(getLocalVPSInfo().ip(), config.vps().getSSHUser(), getSSHPrivateKeyPath());
     }
     
     public List<User> getUsers() throws IOException {

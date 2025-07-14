@@ -4,7 +4,7 @@ import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
 
 public record InstanceParameters(
-    ObjectConfig<VPSProvider> vps,
+    VPSProvider<?> vps,
     ObjectConfig<DynamicDNSProvider> ddns,
     VPNConfig vpn) {
 }

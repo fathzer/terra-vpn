@@ -4,42 +4,45 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
-import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
  * Scaleway VPS provider implementation.
  * This provider allows deploying OpenVPN servers on Scaleway's cloud infrastructure.
  */
-
 @Registerable(
         value = "scaleway",
         classes = {VPSProvider.class}
 )
-public class ScalewayVPS extends VPSProvider {
+public class ScalewayVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     @Override
     public String name() {
         return "Scaleway VPS";
     }
 
     @Override
-    public List<String> checkConfiguration(ObjectConfig<VPSProvider> config) {
+    public Class<BasicTokenAuthVPSConfiguration> getConfigClass() {
+        return BasicTokenAuthVPSConfiguration.class;
+    }
+
+    @Override
+    public List<String> checkConfiguration() {
         return List.of();
     }
 
     @Override
-    public VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) {
+    public VPSState createVPS(Consumer<VPSState> progress) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean exists(InstanceParameters parameters, String id) {
+    public boolean exists(String id) {
         return false;
     }
 
     @Override
-    public void deleteVPS(InstanceParameters parameters, String id) {
+    public void deleteVPS(String id) {
         throw new UnsupportedOperationException();
     }
 }

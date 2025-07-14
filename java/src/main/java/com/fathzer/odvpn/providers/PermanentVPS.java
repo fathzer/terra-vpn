@@ -5,8 +5,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
-import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.utils.IPv4Validator;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -17,8 +16,15 @@ import com.fathzer.odvpn.utils.Registerable;
         value = "permanent",
         classes = {VPSProvider.class}
 )
-public class PermanentVPS extends VPSProvider {
-    private static final String IP_ATTR = "ip";
+public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
+	
+	public static class PermanentSettings {
+		private String ip;
+
+		public String getIp() {
+			return ip;
+		}
+	}
 
     @Override
     public String name() {
@@ -26,28 +32,33 @@ public class PermanentVPS extends VPSProvider {
     }
 
     @Override
-    public List<String> checkConfiguration(ObjectConfig<VPSProvider> config) {
+    public Class<PermanentSettings> getConfigClass() {
+        return PermanentSettings.class;
+    }   
+
+    @Override
+    public List<String> checkConfiguration() {
         final List<String> errors = new LinkedList<>();
-        final String ip = config.config().get(IP_ATTR);
-        if (ip == null) {
+        if (settings == null || settings.ip==null) {
             errors.add("Missing IP");
+        } else if (!IPv4Validator.isValid(settings.ip)) {
+        	errors.add(String.format("IP %s is not valid", settings.ip));
         }
         return errors;
     }
 
     @Override
-    public VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) {
-        final String ip = parameters.vps().config().get(IP_ATTR);
-        return new VPSState("permanentServer", ip, Status.READY);
+    public VPSState createVPS(Consumer<VPSState> progress) {
+        return new VPSState("permanentServer", settings.ip, Status.READY);
     }
 
     @Override
-    public boolean exists(InstanceParameters parameters, String id) {
+    public boolean exists(String id) {
         return true;
     }
 
     @Override
-    public void deleteVPS(InstanceParameters parameters, String id) {
+    public void deleteVPS(String id) {
         // Do nothing, as the VPS is supposed to be permanent
     }
 }

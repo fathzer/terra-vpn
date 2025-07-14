@@ -37,7 +37,7 @@ public class ODVpn {
         final InstanceParameters config = InstanceParametersParser.parse(configPath);
         
         if (logger.isInfoEnabled()) {
-            logger.info("VPS provider: {}", config.vps().provider().name());
+            logger.info("VPS provider: {}", config.vps().name());
             logger.info("DDNS provider: {}", config.ddns().provider().name());
         }
 

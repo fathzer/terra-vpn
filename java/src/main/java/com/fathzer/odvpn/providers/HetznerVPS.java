@@ -1,12 +1,9 @@
 package com.fathzer.odvpn.providers;
 
-import static com.fathzer.odvpn.Constants.*;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -16,26 +13,22 @@ import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.providers.HetznerClient.InstanceCreationRequest;
-import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
- * Vultr VPS provider implementation.
- * This provider allows deploying OpenVPN servers on Vultr's cloud infrastructure.
+ * Hetzner VPS provider implementation.
+ * This provider allows deploying OpenVPN servers on Hetzner's cloud infrastructure.
  */
 @Registerable(
         value = "hetzner",
         classes = {VPSProvider.class}
 )
-public class HetznerVPS extends VPSProvider {
+public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     private static final Logger logger = LoggerFactory.getLogger(HetznerVPS.class);
 
     private static final String DEFAULT_INSTANCE_TYPE = "cpx11";
     private static final String DEFAULT_REGION = "nbg1";
-
-    private static final String TOKEN_VAR = "token";
-    private static final String SSH_KEY_NAME_VAR = "ssh_key_name";
     
     @Override
     public String name() {
@@ -43,13 +36,18 @@ public class HetznerVPS extends VPSProvider {
     }
 
     @Override
-    public List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException {
+    public Class<BasicTokenAuthVPSConfiguration> getConfigClass() {
+        return BasicTokenAuthVPSConfiguration.class;
+    }
+
+    @Override
+    public List<String> checkConfiguration() throws IOException {
         List<String> errors = new LinkedList<>();
-        String token = config.config().get(TOKEN_VAR);
+        String token = settings.getToken();
         if (token == null) {
             errors.add("Missing token");
         }
-        String sshKeyName = config.config().get(SSH_KEY_NAME_VAR);
+        String sshKeyName = settings.getSshKeyName();
         if (sshKeyName == null || sshKeyName.trim().isEmpty()) {
             errors.add("Missing SSH key name or SSH key name is empty");
         }
@@ -68,7 +66,7 @@ public class HetznerVPS extends VPSProvider {
                 errors.add(e.getMessage());
             }
             // Check if region exists
-            String region = config.config().getOrDefault(REGION_VAR, DEFAULT_REGION);
+            String region = settings.getRegion(DEFAULT_REGION);
             try {
                 client.checkRegion(region);
             } catch (IllegalArgumentException e) {
@@ -76,7 +74,7 @@ public class HetznerVPS extends VPSProvider {
             }
             // Check if instance type exists in the location
             try {
-                client.checkInstanceType(region, config.config().getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE));
+                client.checkInstanceType(region, settings.getInstanceType(DEFAULT_INSTANCE_TYPE));
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
@@ -85,14 +83,13 @@ public class HetznerVPS extends VPSProvider {
     }
 
     @Override
-    public VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) throws IOException {
-        Map<String, String> config = parameters.vps().config();
-        try (HetznerClient client = new HetznerClient(config.get(TOKEN_VAR))) {
-            final String sshKeyId = client.getSSHKeyId(config.get(SSH_KEY_NAME_VAR));
+    public VPSState createVPS(Consumer<VPSState> progress) throws IOException {
+        try (HetznerClient client = new HetznerClient(settings.getToken())) {
+            final String sshKeyId = client.getSSHKeyId(settings.getSshKeyName());
             final String instanceName = getInstanceName();
             InstanceCreationRequest request = new InstanceCreationRequest(
-                config.getOrDefault(REGION_VAR, DEFAULT_REGION),
-                config.getOrDefault(INSTANCE_TYPE_VAR, DEFAULT_INSTANCE_TYPE),
+                settings.getRegion(DEFAULT_REGION),
+                settings.getInstanceType(DEFAULT_INSTANCE_TYPE),
                 instanceName,
                 "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));
             final String id = client.create(request);
@@ -115,8 +112,8 @@ public class HetznerVPS extends VPSProvider {
     }
 
     @Override
-    public boolean exists(InstanceParameters parameters, String id) throws IOException {
-        try (HetznerClient client = new HetznerClient(parameters.vps().config().get(TOKEN_VAR))) {
+    public boolean exists(String id) throws IOException {
+        try (HetznerClient client = new HetznerClient(settings.getToken())) {
             return !client.getState(id).status().equals(Status.STOPPED);
         } catch (ErrorResponseException e) {
             if (e.getStatusCode() == 404) {
@@ -127,8 +124,8 @@ public class HetznerVPS extends VPSProvider {
     }
 
     @Override
-    public void deleteVPS(InstanceParameters parameters, String id) throws IOException {
-        try (HetznerClient client = new HetznerClient(parameters.vps().config().get(TOKEN_VAR))) {
+    public void deleteVPS(String id) throws IOException {
+        try (HetznerClient client = new HetznerClient(settings.getToken())) {
             client.delete(id);
             logger.info("Hetzner instance {} deleted", id);
         }

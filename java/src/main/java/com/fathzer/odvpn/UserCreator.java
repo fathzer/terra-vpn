@@ -30,7 +30,7 @@ public class UserCreator {
 
     public void createUser(String username) throws IOException {
         final String ip = getIp();
-        final String sshUser = VPSProvider.getSSHUser(parameters.vps());
+        final String sshUser = parameters.vps().getSSHUser();
         try (OpenVPNManager openVPNConfigManager = new OpenVPNManager(ip, sshUser, sshPrivateKey)) {
             openVPNConfigManager.addUser(username);
             List<String> configFile = openVPNConfigManager.getUserConfigurationFile(username);

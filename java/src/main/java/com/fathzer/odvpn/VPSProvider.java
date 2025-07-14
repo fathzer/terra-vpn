@@ -6,10 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
-
-public abstract class VPSProvider implements Provider {
+public abstract class VPSProvider<T> implements Provider {
     /**
      * Represents the state of a Virtual Private Server (VPS) instance.
      */
@@ -30,6 +27,24 @@ public abstract class VPSProvider implements Provider {
          * The VPS instance is being deleted.
          */
         STOPPED
+    }
+
+    protected T settings;
+
+    /**
+     * Gets the configuration for the VPS provider.
+     * @return The configuration object containing the provider-specific settings
+     */
+    public T getSettings() {
+        return settings;
+    }
+
+    /**
+     * Sets the configuration for the VPS provider.
+     * @param settings The configuration object containing the provider-specific settings
+     */
+    public void setSettings(T settings) {
+        this.settings = settings;
     }
 
     /**
@@ -57,31 +72,28 @@ public abstract class VPSProvider implements Provider {
     }
 
     /**
-     * Checks the configuration for the VPS provider.
+     * Checks the settings for the VPS provider.
      * This method is used to validate the configuration before creating a VPS instance.
      *
-     * @param config The configuration object containing the provider-specific settings
      * @return A list of configuration errors, or an empty list if the configuration is valid
      */
-    public abstract List<String> checkConfiguration(ObjectConfig<VPSProvider> config) throws IOException;
+    public abstract List<String> checkConfiguration() throws IOException;
 
     /**
      * Checks if the VPS instance exists.
-     * @param parameters The parameters defining the VPS configuration, such as instance type, storage, and network settings
      * @param id The unique identifier of the VPS instance in the provider's system
      * @return true if the VPS instance exists, false otherwise
      */
-    public abstract boolean exists(InstanceParameters parameters, String id) throws IOException;
+    public abstract boolean exists(String id) throws IOException;
 
     /**
      * Creates a new Virtual Private Server (VPS) instance.
      * This method is responsible for provisioning a new VPS instance based on the provided parameters.
      *
-     * @param parameters The parameters defining the VPS configuration, such as instance type, storage, and network settings
      * @param progress A consumer that receives progress updates during the VPS creation process
      * @return A VPSState object representing the created VPS instance, containing its unique identifier and public IP address
      */
-    public abstract VPSState createVPS(InstanceParameters parameters, Consumer<VPSState> progress) throws IOException;
+    public abstract VPSState createVPS(Consumer<VPSState> progress) throws IOException;
 
     /**
      * Creates a human-readable name for the VPS instance.
@@ -93,20 +105,18 @@ public abstract class VPSProvider implements Provider {
     /**
      * Deletes an existing Virtual Private Server (VPS) instance.
      * This method is responsible for removing a VPS instance from the provider's system.
-     *
-     * @param parameters The parameters defining the VPS configuration, such as instance type, storage, and network settings
      * @param id The unique identifier of the VPS instance to be deleted
      */
-    public abstract void deleteVPS(InstanceParameters parameters, String id) throws IOException;
+    public abstract void deleteVPS(String id) throws IOException;
 
     /**
-     * Retrieves the SSH username for the VPS provider.
-     * This method returns the SSH username configured in the provided configuration object.
-     *
-     * @param config The configuration object containing the provider-specific settings
-     * @return The SSH username configured in the configuration object, or "root" if not specified
+     * Gets the SSH username for the VPS provider.
+     * <br>The default implementation returns "root".
+     * @return The SSH username to use to connect to the VPS instance
      */
-    public static String getSSHUser(ObjectConfig<VPSProvider> config) {
-        return config.config().getOrDefault(Constants.SSH_USER_VAR, "root");
+    public String getSSHUser() {
+        return "root";
     }
+
+    public abstract Class<T> getConfigClass();
 }

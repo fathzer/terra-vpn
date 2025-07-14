@@ -3,8 +3,8 @@
         "providerId": "digitalOcean",
         "config": {
             "token": "digitalOceanToken",
-            "instance_type": "s-1vcpu-1gb",
-            "zone": "lon1"
+            "instanceType": "s-1vcpu-1gb",
+            "region": "lon1"
         }
     },
     "ddns": {
