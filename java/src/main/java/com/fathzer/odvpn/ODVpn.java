@@ -38,7 +38,7 @@ public class ODVpn {
         
         if (logger.isInfoEnabled()) {
             logger.info("VPS provider: {}", config.vps().name());
-            logger.info("DDNS provider: {}", config.ddns().provider().name());
+            logger.info("DDNS provider: {}", config.ddns().name());
         }
 
         final Path directory = settings.dataPath().resolve(name);

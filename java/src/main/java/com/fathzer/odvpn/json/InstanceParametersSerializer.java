@@ -3,9 +3,7 @@ package com.fathzer.odvpn.json;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.Registerable;
 
@@ -28,12 +26,11 @@ public class InstanceParametersSerializer extends JsonSerializer<InstanceParamet
     public void serialize(InstanceParameters value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeStartObject();
         
-        JsonSerializer<ObjectConfig<DynamicDNSProvider>> ddnsSerializer = new ObjectConfigSerializer<>(createProviderId());
         gen.writeFieldName("ddns");
-        ddnsSerializer.serialize(value.ddns(), gen, serializers);
+        new ProviderSerializer(createProviderId()).serialize(value.ddns(), gen, serializers);
 
         gen.writeFieldName("vps");
-        new VPSProviderSerializer(createProviderId()).serialize(value.vps(), gen, serializers);
+        new ProviderSerializer(createProviderId()).serialize(value.vps(), gen, serializers);
         
         JsonSerializer<VPNConfig> vpnSerializer = new VPNConfigSerializer();
         gen.writeFieldName("vpn");

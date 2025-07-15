@@ -192,7 +192,7 @@ public abstract class AbstractOnDemandVPNManager {
         final List<String> errors = new LinkedList<>();
         errors.addAll(config.vps().checkConfiguration());
         // Then check the ddns configuration
-        errors.addAll(config.ddns().provider().checkConfiguration(config.ddns().config(), config.vpn().hostname()));
+        errors.addAll(config.ddns().checkConfiguration(config.vpn().hostname()));
         // Finally, check the openVpnConfiguration
         if (openVpnConfigPath == null) {
             openVpnConfigPath = getOpenVPNConfigPath();
@@ -265,7 +265,7 @@ public abstract class AbstractOnDemandVPNManager {
 
     private void updateDDNS(String ip, StartProgressListener progressListener) throws IOException {
         progressListener.updatingDDNS(config.vpn().hostname(), ip);
-        config.ddns().provider().updateDns(config.ddns().config(), config.vpn().hostname(), ip);
+        config.ddns().updateDns(config.vpn().hostname(), ip);
     }
 
     private class DNSUpdateProgressListener implements Consumer<VPSProvider.VPSState> {

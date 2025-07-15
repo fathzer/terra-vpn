@@ -44,7 +44,7 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     @Override
     public List<String> checkConfiguration() throws IOException {
         List<String> errors = new LinkedList<>();
-        String token = settings.getToken();
+        String token = getToken();
         if (token == null) {
             errors.add("Missing token");
         }
@@ -85,8 +85,8 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public VPSState createVPS(Consumer<VPSState> progress) throws IOException {
-        try (VultrClient client = new VultrClient(settings.getToken())) {
-            final String sshKeyId = client.getSSHKeyId(settings.getSshKeyName());
+        try (VultrClient client = new VultrClient(getToken())) {
+            final String sshKeyId = client.getSSHKeyId(resolve(settings.getSshKeyName()));
             final String instanceName = getInstanceName();
             InstanceCreationRequest request = new InstanceCreationRequest(
                 settings.getRegion(DEFAULT_REGION),
@@ -114,7 +114,7 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public boolean exists(String id) throws IOException {
-        try (VultrClient client = new VultrClient(settings.getToken())) {
+        try (VultrClient client = new VultrClient(getToken())) {
             return !client.getState(id).status().equals(Status.STOPPED);
         } catch (ErrorResponseException e) {
             if (e.getStatusCode() == 404) {
@@ -126,9 +126,13 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public void deleteVPS(String id) throws IOException {
-        try (VultrClient client = new VultrClient(settings.getToken())) {
+        try (VultrClient client = new VultrClient(getToken())) {
             client.delete(id);
             logger.info("Vultr instance {} deleted", id);
         }
+    }
+
+    private String getToken() {
+        return resolve(settings.getToken());
     }
 }

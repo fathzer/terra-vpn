@@ -8,38 +8,28 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Abstract Dynamic DNS provider.
  */
-public abstract class DynamicDNSProvider implements Provider {
-    /**
-     * Gets the name of variables specifically required to configure this provider.
-     * @return the variables required to configure this provider.
-     */
-    public abstract Set<String> getVariables();
-
+public abstract class DynamicDNSProvider<T> extends Provider<T> {
     /**
      * Updates the DNS record.
-     * @param configuration the configuration
      * @param hostName the host name
      * @param ip the IP address
      * @throws IOException if an I/O error occurs
      */
-    public abstract void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException;
+    public abstract void updateDns(String hostName, String ip) throws IOException;
 
     /**
      * Checks the configuration.
      * <br>The default implementation tries to update the DNS record to its current value (or to "127.0.0.1" if the host name cannot be resolved).
      * If it fails, it means the configuration is invalid.
-     * @param configuration the configuration
      * @param hostName the host name
      * @return a list of errors
      * @throws IOException if an I/O error occurs
      */
-    public List<String> checkConfiguration(Map<String, String> configuration, String hostName) throws IOException {
+    public List<String> checkConfiguration(String hostName) throws IOException {
         String ip;
         try {
             ip = InetAddress.getByName(hostName).getHostAddress();
@@ -48,7 +38,7 @@ public abstract class DynamicDNSProvider implements Provider {
         }
         try {
             // Try to update the DNS record to its current value. If it fails, it means the configuration is invalid.
-            updateDns(configuration, hostName, ip);
+            updateDns(hostName, ip);
             return List.of();
         } catch (IOException e) {
             return List.of(e.getMessage());

@@ -1,7 +1,5 @@
 package com.fathzer.odvpn;
 
-import static com.fathzer.odvpn.Constants.*;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
@@ -26,6 +24,11 @@ import com.fathzer.odvpn.utils.ListOutputStream;
  */
 public class OpenVPNManager implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OpenVPNManager.class);
+    /** The OpenVPN image to use */
+    private static final String OPENVPN_IMAGE = "kylemanna/openvpn";
+    /** The OpenVPN configuration folder on the VPS */
+    private static final String OPENVPN_VPS_FOLDER = "/etc/openvpn";
+
     static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
 
     private final Ssh ssh;

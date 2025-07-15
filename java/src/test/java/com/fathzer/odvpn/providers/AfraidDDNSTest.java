@@ -3,7 +3,6 @@ package com.fathzer.odvpn.providers;
 import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.Mockito.*;
@@ -25,25 +24,25 @@ class AfraidDDNSTest {
                 return response;
             }
         };
-        Map<String, String> config = Map.of(AfraidDDNS.VAR_TOKEN, "token");
+        afraidDDNS.setSettings(new AfraidDDNS.Settings("token"));
 
         when(response.statusCode()).thenReturn(200);
 
         // Check for "address not changed" error message
         when(response.body()).thenReturn("ERROR: Address 127.0.0.1 has not changed.");
-        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "useless", "127.0.0.1"));
+        assertDoesNotThrow(() -> afraidDDNS.updateDns("useless", "127.0.0.1"));
         assertEquals("https://freedns.afraid.org/dynamic/update.php?token&address=127.0.0.1", lastRequest.get().uri().toString());
 
         // Check address was successfully changed
         when(response.body()).thenReturn("Updated 1 host(s) terravpn.soon.it to 127.0.0.1 in 0.006 seconds");
-        assertDoesNotThrow(() -> afraidDDNS.updateDns(config, "useless", "127.0.0.1"));
+        assertDoesNotThrow(() -> afraidDDNS.updateDns("useless", "127.0.0.1"));
 
         // Check for other error messages
         when(response.body()).thenReturn("bad 127.0.0.1");
-        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "useless", "127.0.0.1"));
+        assertThrows(IOException.class, () -> afraidDDNS.updateDns("useless", "127.0.0.1"));
 
         // Check for error codes != 200
         when(response.statusCode()).thenReturn(401);
-        assertThrows(IOException.class, () -> afraidDDNS.updateDns(config, "useless", "127.0.0.1"));
+        assertThrows(IOException.class, () -> afraidDDNS.updateDns("useless", "127.0.0.1"));
     }
 }

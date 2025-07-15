@@ -4,8 +4,7 @@
         "config": {
             "token": "${VULTR_TOKEN}",
             "region": "mad",
-            "ssh_key_name": "odvpn",
-            "instance_type": "vc2-1c-1gb"
+            "instanceType": "vc2-1c-1gb"
         }
     },
     "ddns": {

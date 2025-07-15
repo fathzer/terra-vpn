@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
-import com.fathzer.odvpn.repository.ObjectConfig;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
@@ -27,24 +26,8 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
             throw new InvalidFormatException(p, "Invalid configuration: expected JSON object", root, InstanceParameters.class);
         }
 
-        JsonNode ddnsNode = root.get("ddns");
-        if (ddnsNode == null || ddnsNode.isNull()) {
-            throw new InvalidFormatException(p, "Missing ddns configuration", null, ObjectConfig.class);
-        }
-        ObjectConfig<DynamicDNSProvider> ddns = deserializeConfig(ddnsNode, DynamicDNSProvider.class, mapper);
-
-        JsonNode vpsNode = root.get("vps");
-        if (vpsNode == null || vpsNode.isNull()) {
-            throw new InvalidFormatException(p, "Missing vps configuration", null, VPSProvider.class);
-        }
-        VPSProvider<?> vps;
-        try {
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            VPSProviderDeserializer<?> deserializer = new VPSProviderDeserializer(VPSProvider.class);
-            vps = deserializer.deserialize(vpsNode.traverse(mapper), mapper.getDeserializationContext());
-        } catch (Exception e) {
-            throw InvalidFormatException.from(p, "Invalid vps configuration: " + e.getMessage(), vpsNode, VPSProvider.class);
-        }
+        DynamicDNSProvider<?> ddns = deserializeProvider(p, root.get("ddns"), "ddns", DynamicDNSProvider.class);
+        VPSProvider<?> vps = deserializeProvider(p, root.get("vps"), "vps",VPSProvider.class);
 
         JsonNode vpnNode = root.get("vpn");
         if (vpnNode == null || vpnNode.isNull()) {
@@ -60,12 +43,19 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
         return new InstanceParameters(vps, ddns, vpn);
     }
 
-        private <T> ObjectConfig<T> deserializeConfig(JsonNode node, Class<T> providerType, ObjectMapper mapper) throws IOException {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private <T> T deserializeProvider(JsonParser p, JsonNode node, String configName, Class<T> providerClass) throws IOException {
+        if (node == null || node.isNull()) {
+            throw new InvalidFormatException(p, "Missing " + configName + " configuration", null, providerClass);
+        }
         try {
-            ObjectConfigDeserializer<T> deserializer = new ObjectConfigDeserializer<>(providerType);
-            return deserializer.deserialize(node.traverse(mapper), mapper.getDeserializationContext());
+            ObjectMapper mapper = (ObjectMapper) p.getCodec();
+            // Create a raw type instance of ProviderDeserializer to avoid type parameter issues
+            ProviderDeserializer deserializer = new ProviderDeserializer(providerClass);
+            // The deserializer returns Provider<T>, but we need to cast to T
+            return (T) deserializer.deserialize(node.traverse(mapper), mapper.getDeserializationContext());
         } catch (Exception e) {
-            throw InvalidFormatException.from(null, "Failed to deserialize configuration: " + e.getMessage(), node, providerType);
+            throw InvalidFormatException.from(p, "Invalid " + configName + " configuration: " + e.getMessage(), node, providerClass);
         }
     }
 }

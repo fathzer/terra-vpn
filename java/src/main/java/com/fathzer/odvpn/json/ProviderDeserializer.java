@@ -5,29 +5,29 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fathzer.odvpn.ProviderRegistry;
-import com.fathzer.odvpn.VPSProvider;
+import com.fathzer.odvpn.Provider;
 import java.io.IOException;
 import java.util.Map;
 
-public class VPSProviderDeserializer<T> extends JsonDeserializer<VPSProvider<T>> {
-    private final Class<VPSProvider<T>> providerClass;
+public class ProviderDeserializer<T> extends JsonDeserializer<Provider<T>> {
+    private final Class<Provider<T>> providerClass;
 
-    protected VPSProviderDeserializer(Class<VPSProvider<T>> providerClass) {
+    protected ProviderDeserializer(Class<Provider<T>> providerClass) {
         this.providerClass = providerClass;
     }
 
     @Override
-    public VPSProvider<T> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public Provider<T> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         ObjectMapper mapper = (ObjectMapper) p.getCodec();
         JsonNode root;
         try {
             root = mapper.readTree(p);
         } catch (JsonProcessingException e) {
-            throw new InvalidFormatException(p, "Invalid JSON: " + e.getMessage(), null, VPSProvider.class);
+            throw new InvalidFormatException(p, "Invalid JSON: " + e.getMessage(), null, Provider.class);
         }
 
         if (root == null || !root.isObject()) {
-            throw new InvalidFormatException(p, "Invalid configuration: expected JSON object", root, VPSProvider.class);
+            throw new InvalidFormatException(p, "Invalid configuration: expected JSON object", root, Provider.class);
         }
 
         JsonNode providerNode = root.get("providerId");
@@ -36,7 +36,7 @@ public class VPSProviderDeserializer<T> extends JsonDeserializer<VPSProvider<T>>
         }
         String providerId = providerNode.asText();
 
-        VPSProvider<T> provider = ProviderRegistry.getProvider(providerId, providerClass);
+        Provider<T> provider = ProviderRegistry.getProvider(providerId, providerClass);
         if (provider == null) {
             throw new InvalidFormatException(p, "Unknown provider: " + providerId, providerId, providerClass);
         }

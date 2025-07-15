@@ -43,11 +43,11 @@ public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     @Override
     public List<String> checkConfiguration() throws IOException {
         List<String> errors = new LinkedList<>();
-        String token = settings.getToken();
+        String token = getToken();
         if (token == null) {
             errors.add("Missing token");
         }
-        String sshKeyName = settings.getSshKeyName();
+        String sshKeyName = resolve(settings.getSshKeyName());
         if (sshKeyName == null || sshKeyName.trim().isEmpty()) {
             errors.add("Missing SSH key name or SSH key name is empty");
         }
@@ -84,8 +84,8 @@ public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public VPSState createVPS(Consumer<VPSState> progress) throws IOException {
-        try (HetznerClient client = new HetznerClient(settings.getToken())) {
-            final String sshKeyId = client.getSSHKeyId(settings.getSshKeyName());
+        try (HetznerClient client = new HetznerClient(getToken())) {
+            final String sshKeyId = client.getSSHKeyId(resolve(settings.getSshKeyName()));
             final String instanceName = getInstanceName();
             InstanceCreationRequest request = new InstanceCreationRequest(
                 settings.getRegion(DEFAULT_REGION),
@@ -113,7 +113,7 @@ public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public boolean exists(String id) throws IOException {
-        try (HetznerClient client = new HetznerClient(settings.getToken())) {
+        try (HetznerClient client = new HetznerClient(getToken())) {
             return !client.getState(id).status().equals(Status.STOPPED);
         } catch (ErrorResponseException e) {
             if (e.getStatusCode() == 404) {
@@ -125,9 +125,13 @@ public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
 
     @Override
     public void deleteVPS(String id) throws IOException {
-        try (HetznerClient client = new HetznerClient(settings.getToken())) {
+        try (HetznerClient client = new HetznerClient(getToken())) {
             client.delete(id);
             logger.info("Hetzner instance {} deleted", id);
         }
+    }
+
+    private String getToken() {
+        return resolve(settings.getToken());
     }
 }

@@ -6,8 +6,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Map;
-import java.util.Set;
 
 import com.fathzer.odvpn.DynamicDNSProvider;
 import com.fathzer.odvpn.utils.Registerable;
@@ -17,12 +15,11 @@ import com.fathzer.odvpn.utils.Registerable;
  * This provider updates DNS records using OVH's DynHost service.
  */
 @Registerable(
-        value = "ovh",
-        classes = {DynamicDNSProvider.class}
+    value = "ovh",
+    classes = {DynamicDNSProvider.class}
 )
-public class OvhDDNS extends DynamicDNSProvider {
-    static final String VAR_USER = "user";
-    static final String VAR_PASSWORD = "password";
+public class OvhDDNS extends DynamicDNSProvider<OvhDDNS.Settings> {
+    public static record Settings(String user, String password) {}
     
     @Override
     public String name() {
@@ -30,13 +27,10 @@ public class OvhDDNS extends DynamicDNSProvider {
     }
 
     @Override
-    public void updateDns(Map<String, String> configuration, String hostName, String ip) throws IOException {
-        final String user = configuration.get(VAR_USER);
-        final String password = configuration.get(VAR_PASSWORD);
-
+    public void updateDns(String hostName, String ip) throws IOException {
         final String url = String.format("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", hostName, ip);
         final URI uri = URI.create(url);
-        final String authent = user + ":" + password;
+        final String authent = resolve(settings.user()) + ":" + resolve(settings.password());
         final String authentBase64 = Base64.getEncoder().encodeToString(authent.getBytes(StandardCharsets.UTF_8));
         final HttpRequest request = HttpRequest.newBuilder().uri(uri).header("Authorization", "Basic " + authentBase64).build();
         final HttpResponse<String> response = doRequest(request);
@@ -46,9 +40,9 @@ public class OvhDDNS extends DynamicDNSProvider {
             throw new IOException("Failed to update DNS: ("+response.statusCode()+") "+body);
         }
     }
-    
+
     @Override
-    public Set<String> getVariables() {
-        return Set.of(VAR_USER, VAR_PASSWORD);
+    public Class<Settings> getConfigClass() {
+        return Settings.class;
     }
 }

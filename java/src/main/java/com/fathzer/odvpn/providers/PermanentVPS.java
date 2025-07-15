@@ -20,10 +20,15 @@ public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
 	
 	public static class PermanentSettings {
 		private String ip;
+        private String sshUser;
 
 		public String getIp() {
 			return ip;
 		}
+
+        public String getSshUser() {
+            return sshUser;
+        }
 	}
 
     @Override
@@ -61,4 +66,11 @@ public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
     public void deleteVPS(String id) {
         // Do nothing, as the VPS is supposed to be permanent
     }
+
+    @Override
+    public String getSSHUser() {
+        final String sshUser = resolve(settings.getSshUser());
+        return sshUser != null ? sshUser : super.getSSHUser();
+    }
+    
 }

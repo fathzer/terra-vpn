@@ -3,7 +3,7 @@
         "providerId": "digitalOcean",
         "config": {
             "token": "${DIGITALOCEAN_TOKEN}",
-            "instance_type": "s-1vcpu-1gb",
+            "instanceType": "s-1vcpu-1gb",
             "region": "lon1"
         }
     },

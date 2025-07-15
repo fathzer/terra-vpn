@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Consumer;
 
-public abstract class VPSProvider<T> implements Provider {
+public abstract class VPSProvider<T> extends Provider<T> {
     /**
      * Represents the state of a Virtual Private Server (VPS) instance.
      */
@@ -27,24 +27,6 @@ public abstract class VPSProvider<T> implements Provider {
          * The VPS instance is being deleted.
          */
         STOPPED
-    }
-
-    protected T settings;
-
-    /**
-     * Gets the configuration for the VPS provider.
-     * @return The configuration object containing the provider-specific settings
-     */
-    public T getSettings() {
-        return settings;
-    }
-
-    /**
-     * Sets the configuration for the VPS provider.
-     * @param settings The configuration object containing the provider-specific settings
-     */
-    public void setSettings(T settings) {
-        this.settings = settings;
     }
 
     /**
@@ -117,6 +99,4 @@ public abstract class VPSProvider<T> implements Provider {
     public String getSSHUser() {
         return "root";
     }
-
-    public abstract Class<T> getConfigClass();
 }

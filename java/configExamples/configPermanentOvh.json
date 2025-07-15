@@ -2,7 +2,7 @@
     "vps" : {
         "providerId": "permanent",
         "config": {
-            "ssh_user": "debian",
+            "sshUser": "debian",
             "ip": "145.239.135.93"
         }
     },

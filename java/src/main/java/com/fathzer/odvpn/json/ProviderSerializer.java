@@ -6,17 +6,17 @@ import java.util.function.Function;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fathzer.odvpn.VPSProvider;
+import com.fathzer.odvpn.Provider;
 
-public class VPSProviderSerializer extends JsonSerializer<VPSProvider<?>> {
-    private final Function<VPSProvider<?>, String> providerId;
+public class ProviderSerializer extends JsonSerializer<Provider<?>> {
+    private final Function<Provider<?>, String> providerId;
 
-    VPSProviderSerializer(Function<VPSProvider<?>, String> providerId) {
+    ProviderSerializer(Function<Provider<?>, String> providerId) {
         this.providerId = providerId;
     }
     
     @Override
-    public void serialize(VPSProvider<?> value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+    public void serialize(Provider<?> value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeStartObject();
         gen.writeStringField("providerId", providerId.apply(value));
         gen.writeObjectField("config", value.getSettings());
