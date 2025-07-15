@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,12 +19,6 @@ public class HetznerClient extends BasicVPSProviderClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ErrorResponse(String error, int status) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Plan(String id, List<String> locations) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record PlansResponse(List<Plan> plans) {}
 
     record InstanceCreationRequest(String region,
         String plan,
@@ -77,14 +72,24 @@ public class HetznerClient extends BasicVPSProviderClient {
         checkRegion(region, LocationsResponse.class, l -> l.regions().stream().map(Region::name));
     }
 
-    void checkInstanceType(String zone, String instanceType) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/plans")).build());
-        final PlansResponse plansResponse = this.objectMapper.readValue(response.body(), PlansResponse.class);
-        boolean exists = plansResponse.plans.stream()
-            .anyMatch(plan -> plan.id.equals(instanceType) && plan.locations.contains(zone));
-        if (!exists) {
-            throw new IllegalArgumentException("Unknown instance type " + instanceType + " for zone " + zone);
+    @Override
+    protected String getInstanceTypesPath() {
+        return "/server_types";
+    }
+
+    public void checkInstanceType(String region, String instanceType) throws IOException {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record Price(String location) {}
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record ServerType(String name, List<Price> prices) {}
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record ServerTypesResponse(@JsonProperty("server_types") List<ServerType> serverTypes) {
+            public boolean exists(String region, String instanceType) {
+                final Optional<ServerType> serverType = serverTypes.stream().filter(s -> s.name.equals(instanceType)).findAny();
+                return serverType.isPresent() && serverType.get().prices.stream().anyMatch(p -> p.location.equals(region));
+            }
         }
+        checkInstanceType(region, instanceType, ServerTypesResponse.class, s -> s.exists(region, instanceType));
     }
 
     private String getErrorMessage(HttpResponse<String> response) {

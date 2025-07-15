@@ -5,7 +5,9 @@ import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
+
 
 import com.fathzer.odvpn.AbstractVPSProviderClient;
 
@@ -69,6 +71,20 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
         final T locationsResponse = this.objectMapper.readValue(response.body(), responseType);
         if (regionsGetter.apply(locationsResponse).noneMatch(region::equals)) {
             throw new IllegalArgumentException("Unknown region " + region);
+        }
+    }
+
+    protected String getInstanceTypesPath() {
+        return "/instance-types";
+    }
+
+    public abstract void checkInstanceType(String region, String instanceType) throws IOException;
+
+    protected <T> void checkInstanceType(String region, String instanceType, Class<T> responseType, Predicate<T> exists) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstanceTypesPath())).build());
+        final T instanceTypesResponse = this.objectMapper.readValue(response.body(), responseType);
+        if (!exists.test(instanceTypesResponse)) {
+            throw new IllegalArgumentException("Unknown instance type " + instanceType + " for region " + region);
         }
     }
 

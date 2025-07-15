@@ -18,12 +18,6 @@ public class VultrClient extends BasicVPSProviderClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ErrorResponse(String error, int status) {}
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Plan(String id, List<String> locations) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record PlansResponse(List<Plan> plans) {}
-
     record InstanceCreationRequest(String region,
         String plan,
         String label,
@@ -59,14 +53,20 @@ public class VultrClient extends BasicVPSProviderClient {
         return API_URL;
     }
 
-    void checkInstanceType(String zone, String instanceType) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/plans")).build());
-        final PlansResponse plansResponse = this.objectMapper.readValue(response.body(), PlansResponse.class);
-        boolean exists = plansResponse.plans.stream()
-            .anyMatch(plan -> plan.id.equals(instanceType) && plan.locations.contains(zone));
-        if (!exists) {
-            throw new IllegalArgumentException("Unknown instance type " + instanceType + " for zone " + zone);
+    @Override
+    protected String getInstanceTypesPath() {
+        return "/plans";
+    }
+    public void checkInstanceType(String region, String instanceType) throws IOException {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record Plan(String id, List<String> locations) {}
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record PlansResponse(List<Plan> plans) {
+            public boolean exists(String region, String instanceType) {
+                return plans.stream().anyMatch(plan -> plan.id.equals(instanceType) && plan.locations.contains(region));
+            }
         }
+        checkInstanceType(region, instanceType, PlansResponse.class, s -> s.exists(region, instanceType));
     }
 
     private String getErrorMessage(HttpResponse<String> response) {

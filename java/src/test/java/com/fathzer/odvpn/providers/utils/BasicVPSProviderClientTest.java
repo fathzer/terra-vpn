@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
+import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -51,6 +52,11 @@ class BasicVPSProviderClientTest {
             } catch (Exception e) {
                 throw new RuntimeException("Failed to set HTTP client", e);
             }
+        }
+
+        @Override
+        public void checkInstanceType(String region, String instanceType) throws IOException {
+            throw new UnsupportedOperationException("Not implemented");
         }
     }
     
