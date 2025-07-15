@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.providers.AfraidDDNS;
-import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
 import com.fathzer.odvpn.repository.InstanceParameters;
 
 class InstanceParametersDeserializerTest {
@@ -24,7 +24,7 @@ class InstanceParametersDeserializerTest {
         try (InputStream is = getClass().getResourceAsStream("configDigitalOceanAfraid.json")) {
             InstanceParameters params = mapper.readValue(is, InstanceParameters.class);
             assertEquals("DigitalOceanVPS", params.vps().getClass().getSimpleName());
-            BasicTokenAuthVPSConfiguration vpsSettings = (BasicTokenAuthVPSConfiguration) params.vps().getSettings();
+            BasicTokenAuthVPSSettings vpsSettings = (BasicTokenAuthVPSSettings) params.vps().getSettings();
             assertEquals("digitalOceanToken", vpsSettings.getToken());
             assertEquals("lon1", vpsSettings.getRegion("zone"));
             assertEquals("AfraidDDNS", params.ddns().getClass().getSimpleName());

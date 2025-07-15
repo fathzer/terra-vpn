@@ -13,7 +13,7 @@ import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.providers.HetznerClient.InstanceCreationRequest;
-import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -24,7 +24,7 @@ import com.fathzer.odvpn.utils.Registerable;
         value = "hetzner",
         classes = {VPSProvider.class}
 )
-public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
+public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     private static final Logger logger = LoggerFactory.getLogger(HetznerVPS.class);
 
     private static final String DEFAULT_INSTANCE_TYPE = "cpx11";
@@ -36,8 +36,8 @@ public class HetznerVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     }
 
     @Override
-    public Class<BasicTokenAuthVPSConfiguration> getConfigClass() {
-        return BasicTokenAuthVPSConfiguration.class;
+    public Class<BasicTokenAuthVPSSettings> getConfigClass() {
+        return BasicTokenAuthVPSSettings.class;
     }
 
     @Override

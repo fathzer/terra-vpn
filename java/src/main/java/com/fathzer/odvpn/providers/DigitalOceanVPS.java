@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
-import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -15,15 +15,15 @@ import com.fathzer.odvpn.utils.Registerable;
     value = "digitalOcean",
     classes = {VPSProvider.class}
 )
-public class DigitalOceanVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
+public class DigitalOceanVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     @Override
     public String name() {
         return "DigitalOcean VPS";
     }
 
     @Override
-    public Class<BasicTokenAuthVPSConfiguration> getConfigClass() {
-        return BasicTokenAuthVPSConfiguration.class;
+    public Class<BasicTokenAuthVPSSettings> getConfigClass() {
+        return BasicTokenAuthVPSSettings.class;
     }
 
     @Override

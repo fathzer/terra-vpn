@@ -1,6 +1,6 @@
 package com.fathzer.odvpn.providers.utils;
 
-public class BasicVPSConfiguration {
+public class BasicVPSSettings {
     private String region;
     private String instanceType;
     private String sshKeyName;

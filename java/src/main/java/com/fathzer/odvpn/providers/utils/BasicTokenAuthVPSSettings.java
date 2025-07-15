@@ -1,6 +1,6 @@
 package com.fathzer.odvpn.providers.utils;
 
-public class BasicTokenAuthVPSConfiguration extends BasicVPSConfiguration {
+public class BasicTokenAuthVPSSettings extends BasicVPSSettings {
     private String token;
     
     public String getToken() {

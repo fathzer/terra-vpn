@@ -13,7 +13,7 @@ import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.providers.VultrClient.InstanceCreationRequest;
-import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSConfiguration;
+import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -24,7 +24,7 @@ import com.fathzer.odvpn.utils.Registerable;
         value = "vultr",
         classes = {VPSProvider.class}
 )
-public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
+public class VultrVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     private static final Logger logger = LoggerFactory.getLogger(VultrVPS.class);
 
     private static final String DEFAULT_INSTANCE_TYPE = "vc2-1c-0.5gb";
@@ -37,8 +37,8 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSConfiguration> {
     }
 
     @Override
-    public Class<BasicTokenAuthVPSConfiguration> getConfigClass() {
-        return BasicTokenAuthVPSConfiguration.class;
+    public Class<BasicTokenAuthVPSSettings> getConfigClass() {
+        return BasicTokenAuthVPSSettings.class;
     }
 
     @Override
