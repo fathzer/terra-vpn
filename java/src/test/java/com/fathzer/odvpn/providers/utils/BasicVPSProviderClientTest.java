@@ -16,7 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.AbstractVPSProviderClient;
+import com.fathzer.odvpn.VPSProvider.VPSState;
 
 class BasicVPSProviderClientTest {
 
@@ -55,8 +58,31 @@ class BasicVPSProviderClientTest {
         }
 
         @Override
+        public void checkRegion(String region) throws IOException {
+            @JsonIgnoreProperties(ignoreUnknown = true)
+            record Region(String name) {}
+            @JsonIgnoreProperties(ignoreUnknown = true)
+            record LocationsResponse(List<Region> regions) {}
+            checkRegion(region, r -> this.objectMapper().readValue(r, LocationsResponse.class).regions().stream().map(Region::name));
+        }
+
+        @Override
         public void checkInstanceType(String region, String instanceType) throws IOException {
             throw new UnsupportedOperationException("Not implemented");
+        }
+
+        @Override
+        public String create(VPSCreationSettings request) throws IOException {
+            throw new UnsupportedOperationException("Not implemented");
+        }
+
+        @Override
+        public VPSState getState(String id) throws IOException {
+            throw new UnsupportedOperationException("Not implemented");
+        }
+
+        private ObjectMapper objectMapper() {
+            return this.objectMapper;
         }
     }
     
@@ -115,7 +141,7 @@ class BasicVPSProviderClientTest {
             { "keys": [{"id": "key1", "name": "test-key"}] }
         """);
         record TestSshKeysResponse(List<SshKey> keys) {}
-        keyId = testClient.getSSHKeyId("test-key", TestSshKeysResponse.class, TestSshKeysResponse::keys);
+        keyId = testClient.getSSHKeyId("test-key", r -> testClient.objectMapper().readValue(r, TestSshKeysResponse.class).keys());
         assertEquals("key1", keyId);
     }
     
@@ -159,6 +185,6 @@ class BasicVPSProviderClientTest {
             { "locations": ["nyc1", "sgp1"] }
         """);
         record CustomRegionsResponse(List<String> locations) {}
-        testClient.checkRegion("sgp1", CustomRegionsResponse.class, r -> r.locations().stream());
+        testClient.checkRegion("sgp1", r -> testClient.objectMapper().readValue(r, CustomRegionsResponse.class).locations().stream());
     }
 }

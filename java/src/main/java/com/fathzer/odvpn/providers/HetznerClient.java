@@ -2,49 +2,23 @@ package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
-import com.fathzer.odvpn.providers.utils.Region;
+
+import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
+import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public class HetznerClient extends BasicVPSProviderClient {
     private static final String API_URL = "https://api.hetzner.cloud/v1";
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ErrorResponse(String error, int status) {}
-
-    record InstanceCreationRequest(String region,
-        String plan,
-        String label,
-        String imageId,
-        String backups,
-        List<String> tags,
-        @JsonProperty("sshkey_id") List<String> sshkeyIds) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record InstanceFullResponse(InstanceResponse instance) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record InstanceResponse(String id,
-        @JsonProperty("main_ip") String mainIp,
-        @JsonProperty("power_status") String powerStatus,
-        @JsonProperty("server_status") String serverStatus) {
-
-        public String mainIp() {
-            if (mainIp != null && !mainIp.trim().isEmpty()) {
-                return mainIp.trim();
-            } else {
-                return null;
-            }
-        }
-    }
 
     public HetznerClient(String token) {
         super(token);
@@ -68,8 +42,10 @@ public class HetznerClient extends BasicVPSProviderClient {
     @Override
     public void checkRegion(String region) throws IOException {
         @JsonIgnoreProperties(ignoreUnknown = true)
+        record Region(String name) {}
+        @JsonIgnoreProperties(ignoreUnknown = true)
         record LocationsResponse(@JsonProperty("locations") List<Region> regions) {}
-        checkRegion(region, LocationsResponse.class, l -> l.regions().stream().map(Region::name));
+        checkRegion(region, response -> this.objectMapper.readValue(response, LocationsResponse.class).regions().stream().map(Region::name));
     }
 
     @Override
@@ -92,368 +68,43 @@ public class HetznerClient extends BasicVPSProviderClient {
         checkInstanceType(region, instanceType, ServerTypesResponse.class, s -> s.exists(region, instanceType));
     }
 
-    private String getErrorMessage(HttpResponse<String> response) {
-        try {
-            final ErrorResponse errorResponse = this.objectMapper.readValue(response.body(), ErrorResponse.class);
-            return errorResponse.error;
-        } catch (IOException e) {
-            return "Unknown error with " + response.statusCode()+ " status code";
-        }
+    @Override
+    protected String getInstancesPath() {
+        return "/servers";
+    }
+
+    public String create(VPSCreationSettings settings) throws IOException {
+        IOFunction<String, String> idGetter = response -> this.objectMapper.readTree(response).get("server").get("id").asText();
+        record InstanceCreationRequest(
+            String name,
+            String location,
+            @JsonProperty("server_type") String serverType,
+            String image,
+            @JsonProperty("ssh_keys") List<String> sshKeyIds,
+            Map<String, String> labels) {}
+        return create(settings, s->new InstanceCreationRequest(
+            s.name(), s.region(), s.instanceType(),
+            "docker-ce", List.of(s.sshKeyId()), Map.of("application", "On_demand_VPN")), idGetter);
     }
 
     @Override
-    protected AuthenticationException getAuthenticationException(HttpResponse<String> response) throws IOException {
-        return new AuthenticationException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
-    }
-
-    @Override
-    protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) throws IOException {
-        return new ErrorResponseException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
-    }
-
-    @Override
-    protected ServerErrorException getServerErrorException(HttpResponse<String> response) throws IOException {
-        return new ServerErrorException(response.statusCode(), this.getErrorMessage(response)+" ("+response.uri()+")");
-    }
-
-    String create(InstanceCreationRequest request) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/servers")).POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(request))).build());
-        final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceFullResponse.class).instance();
-        return instanceResponse.id;
-    }
-
-    VPSState getState(String id) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/servers/" + id)).build());
-        final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceFullResponse.class).instance();
+    public VPSState getState(String id) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + id)).build());
+        final JsonNode server = this.objectMapper.readTree(response.body()).get("server");
         final Status status;
-        if (instanceResponse==null || instanceResponse.mainIp()==null) {
+        String ip = null;
+        if (server==null) {
             status = Status.STARTING;
-        } else if ("running".equals(instanceResponse.powerStatus()) && "ok".equals(instanceResponse.serverStatus())) {
-            status = Status.READY;
         } else {
-            status = Status.IP_READY;
+            final String hetznerStatus = server.get("status").asText();
+            final JsonNode ipNode = server.path("public_net").path("ipv4").path("ip");
+            if (ipNode.isMissingNode()) {
+                status = Status.STARTING;
+            } else {
+                ip = ipNode.asText();
+                status = "running".equals(hetznerStatus) ? Status.READY : Status.IP_READY;
+            }
         }
-        return new VPSState(id, instanceResponse==null ? null : instanceResponse.mainIp(), status);
-    }
-
-    void delete(String id) throws IOException {
-        this.doRequest(this.newRequest(URI.create(API_URL + "/servers/" + id)).DELETE().build());
+        return new VPSState(id, ip, status);
     }
 }
-
-/** Creates a new instance reply
- {
-    "server": {
-        "id": 103147789,
-        "name": "test-server",
-        "status": "initializing",
-        "server_type": {
-            "id": 22,
-            "name": "cpx11",
-            "architecture": "x86",
-            "cores": 2,
-            "cpu_type": "shared",
-            "deprecated": false,
-            "deprecation": null,
-            "description": "CPX 11",
-            "disk": 40,
-            "memory": 2,
-            "prices": [
-                {
-                    "location": "ash",
-                    "price_hourly": {
-                        "gross": "0.0086400000000000",
-                        "net": "0.0072000000"
-                    },
-                    "price_monthly": {
-                        "gross": "5.3880000000000000",
-                        "net": "4.4900000000"
-                    },
-                    "included_traffic": 1099511627776,
-                    "price_per_tb_traffic": {
-                        "gross": "1.2000000000000000",
-                        "net": "1.0000000000"
-                    }
-                },
-                {
-                    "location": "fsn1",
-                    "price_hourly": {
-                        "gross": "0.0075600000000000",
-                        "net": "0.0063000000"
-                    },
-                    "price_monthly": {
-                        "gross": "4.6200000000000000",
-                        "net": "3.8500000000"
-                    },
-                    "included_traffic": 21990232555520,
-                    "price_per_tb_traffic": {
-                        "gross": "1.2000000000000000",
-                        "net": "1.0000000000"
-                    }
-                },
-                {
-                    "location": "hel1",
-                    "price_hourly": {
-                        "gross": "0.0075600000000000",
-                        "net": "0.0063000000"
-                    },
-                    "price_monthly": {
-                        "gross": "4.6200000000000000",
-                        "net": "3.8500000000"
-                    },
-                    "included_traffic": 21990232555520,
-                    "price_per_tb_traffic": {
-                        "gross": "1.2000000000000000",
-                        "net": "1.0000000000"
-                    }
-                },
-                {
-                    "location": "hil",
-                    "price_hourly": {
-                        "gross": "0.0086400000000000",
-                        "net": "0.0072000000"
-                    },
-                    "price_monthly": {
-                        "gross": "5.3880000000000000",
-                        "net": "4.4900000000"
-                    },
-                    "included_traffic": 1099511627776,
-                    "price_per_tb_traffic": {
-                        "gross": "1.2000000000000000",
-                        "net": "1.0000000000"
-                    }
-                },
-                {
-                    "location": "nbg1",
-                    "price_hourly": {
-                        "gross": "0.0075600000000000",
-                        "net": "0.0063000000"
-                    },
-                    "price_monthly": {
-                        "gross": "4.6200000000000000",
-                        "net": "3.8500000000"
-                    },
-                    "included_traffic": 21990232555520,
-                    "price_per_tb_traffic": {
-                        "gross": "1.2000000000000000",
-                        "net": "1.0000000000"
-                    }
-                },
-                {
-                    "location": "sin",
-                    "price_hourly": {
-                        "gross": "0.0142800000000000",
-                        "net": "0.0119000000"
-                    },
-                    "price_monthly": {
-                        "gross": "8.8800000000000000",
-                        "net": "7.4000000000"
-                    },
-                    "included_traffic": 1099511627776,
-                    "price_per_tb_traffic": {
-                        "gross": "8.8800000000000000",
-                        "net": "7.4000000000"
-                    }
-                }
-            ],
-            "storage_type": "local"
-        },
-        "datacenter": {
-            "id": 2,
-            "description": "Nuremberg 1 virtual DC 3",
-            "location": {
-                "id": 2,
-                "name": "nbg1",
-                "description": "Nuremberg DC Park 1",
-                "city": "Nuremberg",
-                "country": "DE",
-                "latitude": 49.452102,
-                "longitude": 11.076665,
-                "network_zone": "eu-central"
-            },
-            "name": "nbg1-dc3",
-            "server_types": {
-                "available": [
-                    22,
-                    23,
-                    24,
-                    27,
-                    28,
-                    29,
-                    30,
-                    31,
-                    32,
-                    45,
-                    96,
-                    97,
-                    98,
-                    99,
-                    100,
-                    101,
-                    104
-                ],
-                "available_for_migration": [
-                    22,
-                    23,
-                    24,
-                    27,
-                    28,
-                    29,
-                    30,
-                    31,
-                    32,
-                    45,
-                    96,
-                    97,
-                    98,
-                    99,
-                    100,
-                    101,
-                    104
-                ],
-                "supported": [
-                    1,
-                    3,
-                    5,
-                    7,
-                    9,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15,
-                    22,
-                    23,
-                    24,
-                    25,
-                    26,
-                    33,
-                    34,
-                    35,
-                    36,
-                    37,
-                    38,
-                    39,
-                    40,
-                    41,
-                    42,
-                    43,
-                    44,
-                    45,
-                    93,
-                    94,
-                    95,
-                    96,
-                    97,
-                    98,
-                    99,
-                    100,
-                    101,
-                    104,
-                    105,
-                    106,
-                    107
-                ]
-            }
-        },
-        "image": {
-            "id": 40093247,
-            "type": "app",
-            "name": "docker-ce",
-            "architecture": "x86",
-            "bound_to": null,
-            "created_from": null,
-            "deprecated": null,
-            "description": "docker-ce",
-            "disk_size": 40,
-            "image_size": null,
-            "labels": {},
-            "os_flavor": "ubuntu",
-            "os_version": "unknown",
-            "protection": {
-                "delete": false
-            },
-            "rapid_deploy": true,
-            "status": "available",
-            "created": "2021-06-08T06:22:47Z",
-            "deleted": null
-        },
-        "iso": null,
-        "primary_disk_size": 40,
-        "labels": {
-            "environment": "test",
-            "example.com/my": "label",
-            "just-a-key": ""
-        },
-        "protection": {
-            "delete": false,
-            "rebuild": false
-        },
-        "backup_window": null,
-        "rescue_enabled": false,
-        "locked": false,
-        "placement_group": null,
-        "public_net": {
-            "firewalls": [],
-            "floating_ips": [],
-            "ipv4": {
-                "id": 94673092,
-                "ip": "116.203.77.243",
-                "blocked": false,
-                "dns_ptr": "static.243.77.203.116.clients.your-server.de"
-            },
-            "ipv6": {
-                "id": 94673093,
-                "ip": "2a01:4f8:1c1c:47eb::/64",
-                "blocked": false,
-                "dns_ptr": []
-            }
-        },
-        "private_net": [],
-        "load_balancers": [],
-        "volumes": [],
-        "included_traffic": 0,
-        "ingoing_traffic": 0,
-        "outgoing_traffic": 0,
-        "created": "2025-07-10T12:41:52Z"
-    },
-    "root_password": null,
-    "action": {
-        "id": 566420293308478,
-        "command": "create_server",
-        "started": "2025-07-10T12:41:52Z",
-        "finished": null,
-        "progress": 0,
-        "status": "running",
-        "resources": [
-            {
-                "id": 103147789,
-                "type": "server"
-            },
-            {
-                "id": 40093247,
-                "type": "image"
-            }
-        ],
-        "error": null
-    },
-    "next_actions": [
-        {
-            "id": 566420293308479,
-            "command": "start_server",
-            "started": "2025-07-10T12:41:52Z",
-            "finished": null,
-            "progress": 0,
-            "status": "running",
-            "resources": [
-                {
-                    "id": 103147789,
-                    "type": "server"
-                }
-            ],
-            "parent_id": 566420293308478,
-            "error": null
-        }
-    ]
-}
- */

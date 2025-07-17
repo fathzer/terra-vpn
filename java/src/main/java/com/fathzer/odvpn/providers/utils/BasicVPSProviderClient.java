@@ -2,14 +2,19 @@ package com.fathzer.odvpn.providers.utils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import com.fathzer.odvpn.AbstractVPSProviderClient;
+import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
 
@@ -33,7 +38,7 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
      * @see #getSSHKeyId(String, Class, Function)
      */
     public String getSSHKeyId(String keyName) throws IOException {
-        return this.getSSHKeyId(keyName, SshKeysResponse.class, SshKeysResponse::sshKeys);
+        return this.getSSHKeyId(keyName, r -> this.objectMapper.readValue(r, SshKeysResponse.class).sshKeys());
     }
 
     /**
@@ -43,9 +48,9 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
      * @throws IOException if an I/O error occurs
      * @throws IllegalArgumentException if the key is unknown or duplicated
      */
-    protected <T> String getSSHKeyId(String keyName, Class<T> responseType, Function<T, List<SshKey>> sshKeysGetter) throws IOException {
+    protected String getSSHKeyId(String keyName, IOFunction<String, List<SshKey>> sshKeysGetter) throws IOException {
         final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getSshKeysPath())).build());
-        final T keysResponse = this.objectMapper.readValue(response.body(), responseType);
+        final String keysResponse = response.body();
         // Filter keys by name (case-sensitive)
         final List<SshKey> matchingKeys = sshKeysGetter.apply(keysResponse).stream()
             .filter(key -> keyName.equals(key.name()))
@@ -62,14 +67,11 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
         return "/regions";
     }
 
-    public void checkRegion(String region) throws IOException {
-        checkRegion(region, RegionsResponse.class, r -> r.regions().stream().map(Region::name));
-    }
+    public abstract void checkRegion(String region) throws IOException ;
 
-    protected <T> void checkRegion(String region, Class<T> responseType, Function<T, Stream<String>> regionsGetter) throws IOException {
-         final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getRegionsPath())).build());
-        final T locationsResponse = this.objectMapper.readValue(response.body(), responseType);
-        if (regionsGetter.apply(locationsResponse).noneMatch(region::equals)) {
+    protected void checkRegion(String region, IOFunction<String, Stream<String>> regionsGetter) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getRegionsPath())).build());
+        if (regionsGetter.apply(response.body()).noneMatch(region::equals)) {
             throw new IllegalArgumentException("Unknown region " + region);
         }
     }
@@ -88,4 +90,32 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
         }
     }
 
+    protected String getInstancesPath() {
+        return "/instances";
+    }
+
+    public abstract String create(VPSCreationSettings settings) throws IOException;
+
+    /**
+     * Creates a new instance.
+     * @param request the request containing the instance settings
+     * @param bodyRequestBuilder a function that builds the http request body from the request settings
+     * @param idGetter a function that extracts the instance ID from the response body
+     * @return the instance ID
+     * @throws IOException if an I/O error occurs
+     */
+    protected <T> String create(VPSCreationSettings request, Function<VPSCreationSettings, T> bodyRequestBuilder, IOFunction<String, String> idGetter) throws IOException {
+        final T body = bodyRequestBuilder.apply(request);
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath())).
+            POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(body))).
+            header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).
+            build());
+        return idGetter.apply(response.body());
+    }
+
+    public abstract VPSState getState(String id) throws IOException;
+    
+    public void delete(String id) throws IOException {
+        this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + id)).DELETE().build());
+    }
 }

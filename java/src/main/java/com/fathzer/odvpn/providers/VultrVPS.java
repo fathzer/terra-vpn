@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
-import com.fathzer.odvpn.providers.VultrClient.InstanceCreationRequest;
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
+import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -30,7 +30,6 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     private static final String DEFAULT_INSTANCE_TYPE = "vc2-1c-0.5gb";
     private static final String DEFAULT_REGION = "ewr";
 
-    
     @Override
     public String name() {
         return "Vultr VPS";
@@ -87,13 +86,8 @@ public class VultrVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     public VPSState createVPS(Consumer<VPSState> progress) throws IOException {
         try (VultrClient client = new VultrClient(getToken())) {
             final String sshKeyId = client.getSSHKeyId(resolve(settings.getSshKeyName()));
-            final String instanceName = getInstanceName();
-            InstanceCreationRequest request = new InstanceCreationRequest(
-                settings.getRegion(DEFAULT_REGION),
-                settings.getInstanceType(DEFAULT_INSTANCE_TYPE),
-                instanceName,
-                "docker", "disabled", List.of("On demand VPN"), List.of(sshKeyId));
-            final String id = client.create(request);
+            final String id = client.create(new VPSCreationSettings(getInstanceName(), settings.getRegion(DEFAULT_REGION),
+                settings.getInstanceType(DEFAULT_INSTANCE_TYPE), sshKeyId));
             logger.info("Vultr instance created with ID {} start waiting for it to be ready", id);
             VPSState state;
             for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {

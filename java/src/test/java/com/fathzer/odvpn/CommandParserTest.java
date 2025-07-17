@@ -11,6 +11,8 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.fathzer.odvpn.utils.IOLambdas;
+
 class CommandParserTest {
     private static final CommandParser PARSER = new CommandParser();
 
@@ -25,7 +27,7 @@ class CommandParserTest {
         
         // Test init command without force
         String[] args = {Command.INIT.name, "my-vpn", "config.json"};
-        IORunnable command = PARSER.parse(args, odvpn);
+        IOLambdas.IORunnable command = PARSER.parse(args, odvpn);
         assertNotNull(command);
         command.run();
         verify(odvpn).init("my-vpn", Paths.get("config.json"), null, false);
@@ -49,7 +51,7 @@ class CommandParserTest {
     void testStartCommand() throws IOException {
         final ODVpn odvpn = mock(ODVpn.class);
         String[] args = {Command.START.name, "my-vpn"};
-        IORunnable command = PARSER.parse(args, odvpn);
+        IOLambdas.IORunnable command = PARSER.parse(args, odvpn);
         assertNotNull(command);
         command.run();
         verify(odvpn).start("my-vpn");
@@ -59,7 +61,7 @@ class CommandParserTest {
     void testDeleteCommand() throws IOException {
         final ODVpn odvpn = mock(ODVpn.class);
         String[] args = {Command.DELETE.name, "my-vpn"};
-        IORunnable command = PARSER.parse(args, odvpn);
+        IOLambdas.IORunnable command = PARSER.parse(args, odvpn);
         assertNotNull(command);
         command.run();
         verify(odvpn).delete("my-vpn", false);

@@ -1,6 +1,5 @@
 package com.fathzer.odvpn;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,20 +14,13 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.slf4j.LoggerFactory;
 
+import com.fathzer.odvpn.utils.IOLambdas;
+import com.fathzer.odvpn.utils.IOLambdas.IOBiConsumer;
+
 class CommandParser {
     private static final String COMMAND_PREFIX = "java -jar odvpn.jar";
     private static final String OPT_FORCE = "f";
     private static final String OPT_FORCE_LONG = "force";
-
-    @FunctionalInterface
-    static interface IOConsumer {
-        void accept(ODVpn target, CommandLine line) throws IOException;
-    }
-
-    @FunctionalInterface
-    static interface IORunnable {
-        void run() throws IOException;
-    }
 
     enum Command {
         WEB("web", "Launch the web application", "", new Options(), (o, l) -> o.web()),
@@ -47,9 +39,9 @@ class CommandParser {
         private final String description;
         private final String argsDescription;
         private final Options options;
-        private final IOConsumer action;
+        private final IOBiConsumer<ODVpn, CommandLine> action;
 
-        private Command(String name, String description, String argsDescription, Options options, IOConsumer action) {
+        private Command(String name, String description, String argsDescription, Options options, IOBiConsumer<ODVpn, CommandLine> action) {
             this.name = name;
             this.description = description;
             this.argsDescription = argsDescription;
@@ -93,7 +85,7 @@ class CommandParser {
 
     private boolean silent;
 
-    IORunnable parse(String[] args, ODVpn odvpn) {
+    IOLambdas.IORunnable parse(String[] args, ODVpn odvpn) {
         final PreParsedCommand preParsedCommand = checkCommand(args);
         if (preParsedCommand != null) {
             try {

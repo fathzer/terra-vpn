@@ -103,15 +103,19 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         }
     }
 
-    protected AuthenticationException getAuthenticationException(HttpResponse<String> response) throws IOException {
-        return new AuthenticationException(response.statusCode(), "Authentication failed");
+    protected String getErrorMessage(HttpResponse<String> response) {
+        return response.uri()+" - "+response.body();
     }
 
-    protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) throws IOException {
-        return new ErrorResponseException(response.statusCode(), "Error " + response.statusCode() + ": " + response.body());
+    protected AuthenticationException getAuthenticationException(HttpResponse<String> response) {
+        return new AuthenticationException(response.statusCode(), "Authentication failed "+this.getErrorMessage(response));
     }
 
-    protected ServerErrorException getServerErrorException(HttpResponse<String> response) throws IOException {
-        return new ServerErrorException(response.statusCode(), "Server error " + response.statusCode() + ": " + response.body());
+    protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) {
+        return new ErrorResponseException(response.statusCode(), "Error " + this.getErrorMessage(response));
+    }
+
+    protected ServerErrorException getServerErrorException(HttpResponse<String> response) {
+        return new ServerErrorException(response.statusCode(), "Server error " + this.getErrorMessage(response));
     }
 }

@@ -6,10 +6,10 @@ import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fathzer.odvpn.CommandParser.IORunnable;
 import com.fathzer.odvpn.json.InstanceParametersParser;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
+import com.fathzer.odvpn.utils.IOLambdas.IORunnable;
 import com.fathzer.odvpn.ws.ODVpnApplication;
 
 public class ODVpn {
