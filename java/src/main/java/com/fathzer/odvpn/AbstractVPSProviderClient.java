@@ -86,7 +86,7 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         this.client.close();
     }
 
-    protected HttpResponse<String> doRequest(HttpRequest request) throws IOException {
+    public HttpResponse<String> doRequest(HttpRequest request) throws IOException {
         try {
             HttpResponse<String> response = this.client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 401 || response.statusCode() == 403) {
