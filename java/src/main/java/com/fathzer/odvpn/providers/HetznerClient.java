@@ -91,18 +91,18 @@ public class HetznerClient extends BasicVPSProviderClient {
     public VPSState getState(String id) throws IOException {
         final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + id)).build());
         final JsonNode server = this.objectMapper.readTree(response.body()).get("server");
-        final Status status;
+        Status status = Status.STARTING;
         String ip = null;
-        if (server==null) {
-            status = Status.STARTING;
-        } else {
+        if (!server.isNull()) {
             final String hetznerStatus = server.get("status").asText();
-            final JsonNode ipNode = server.path("public_net").path("ipv4").path("ip");
-            if (ipNode.isMissingNode()) {
-                status = Status.STARTING;
-            } else {
-                ip = ipNode.asText();
-                status = "running".equals(hetznerStatus) ? Status.READY : Status.IP_READY;
+            final JsonNode ipNode = server.path("public_net").path("ipv4");
+            if (!ipNode.isNull()) {
+                ip = ipNode.get("ip").asText().trim();
+                if (ip.isEmpty()) {
+                	ip = null;
+                } else {
+                	status = "running".equals(hetznerStatus) ? Status.READY : Status.IP_READY;
+                }
             }
         }
         return new VPSState(id, ip, status);

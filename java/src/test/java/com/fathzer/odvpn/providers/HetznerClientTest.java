@@ -6,12 +6,9 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.fathzer.odvpn.VPSProvider.Status;
@@ -20,6 +17,13 @@ import com.fathzer.odvpn.VPSProvider.VPSState;
 class HetznerClientTest {
     private static final String TEST_TOKEN = "test-token";
     private static final String TEST_INSTANCE_ID = "103147789";
+    private static final String IP = "65.20.104.140";
+
+    private static final String RESPONSE_BODY_FORMAT = """
+    		{"server": {"id": "103147789","status":"%s","public_net": {"ipv4":%s}}}
+    """;
+    private static final String IP_V4_JSON = "{\"id\":12,\"ip\": \""+IP+"\"}}";
+
     
     private HetznerClient hetznerClient;
     private Function<HttpRequest, HttpResponse<String>> requestHandler;
@@ -52,112 +56,20 @@ class HetznerClientTest {
             return mockResponse;
         };
     }
-    
+
     @Test
-    @Disabled
-    void testGetState_WhenInstanceIsReady_ShouldReturnReadyStatus() throws Exception {
-        // Load the test response from the status.json file
-        String responseBody = new String(Files.readAllBytes(
-            Paths.get("src/test/resources/com/fathzer/odvpn/providers/hetznerStatus.json")));
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertEquals("65.20.104.140", state.ip());
-        assertEquals(Status.READY, state.status());
-    }
-    
-    @Test
-    void testGetState_WhenInstanceIsMissing_ShouldReturnStartingStatus() throws Exception {
-        // Response with empty instance object
-        String responseBody = "{\"instance\": null}";
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertNull(state.ip());
-        assertEquals(Status.STARTING, state.status());
-    }
-    
-    @Test
-    void testGetState_WhenMainIpIsMissing_ShouldReturnStartingStatus() throws Exception {
-        // Response with missing main_ip
-        String responseBody = "{\"instance\": {\"id\":\"" + TEST_INSTANCE_ID + 
-            "\",\"power_status\":\"running\",\"server_status\":\"ok\"}}";
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertNull(state.ip());
-        assertEquals(Status.STARTING, state.status());
-    }
-    
-    @Test
-    void testGetState_WhenPowerStatusIsMissing_ShouldReturnIpReadyStatus() throws Exception {
-        // Response with missing power_status
-        String responseBody = "{\"instance\": {\"id\":\"" + TEST_INSTANCE_ID + 
-            "\",\"main_ip\":\"65.20.104.140\",\"server_status\":\"ok\"}}";
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertEquals("65.20.104.140", state.ip());
-        assertEquals(Status.IP_READY, state.status());
-    }
-    
-    @Test
-    void testGetState_WhenServerStatusIsMissing_ShouldReturnIpReadyStatus() throws Exception {
-        // Response with missing server_status
-        String responseBody = "{\"instance\": {\"id\":\"" + TEST_INSTANCE_ID + 
-            "\",\"main_ip\":\"65.20.104.140\",\"power_status\":\"running\"}}";
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertEquals("65.20.104.140", state.ip());
-        assertEquals(Status.IP_READY, state.status());
-    }
-    
-    @Test
-    void testGetState_WhenMainIpIsEmpty_ShouldReturnStartingStatus() throws Exception {
-        // Response with empty main_ip
-        String responseBody = "{\"instance\": {\"id\":\"" + TEST_INSTANCE_ID + 
-            "\",\"main_ip\":\" \",\"power_status\":\"running\",\"server_status\":\"ok\"}}";
-        
-        setupServersMockResponse(responseBody);
-        
-        // Call the method under test
-        VPSState state = hetznerClient.getState(TEST_INSTANCE_ID);
-        
-        // Verify the result
-        assertNotNull(state);
-        assertEquals(TEST_INSTANCE_ID, state.id());
-        assertNull(state.ip());
-        assertEquals(Status.STARTING, state.status());
+    void testGetState() throws Exception {
+        // STARTING when no server object
+        setupServersMockResponse("{\"server\": null}");
+        assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), hetznerClient.getState(TEST_INSTANCE_ID));
+        // STARTING when null ipv4
+        setupServersMockResponse(String.format(RESPONSE_BODY_FORMAT, "starting", null));
+        assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), hetznerClient.getState(TEST_INSTANCE_ID));
+        // IP_READY when ipv4 is provided
+        setupServersMockResponse(String.format(RESPONSE_BODY_FORMAT, "starting", IP_V4_JSON));
+        assertEquals(new VPSState(TEST_INSTANCE_ID, IP, Status.IP_READY), hetznerClient.getState(TEST_INSTANCE_ID));
+        // READY
+        setupServersMockResponse(String.format(RESPONSE_BODY_FORMAT, "running", IP_V4_JSON));
+        assertEquals(new VPSState(TEST_INSTANCE_ID, IP, Status.READY), hetznerClient.getState(TEST_INSTANCE_ID));
     }
 }
