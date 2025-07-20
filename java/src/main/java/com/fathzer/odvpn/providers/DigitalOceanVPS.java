@@ -1,10 +1,9 @@
 package com.fathzer.odvpn.providers;
 
-import java.util.List;
-import java.util.function.Consumer;
-
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
+import com.fathzer.odvpn.providers.utils.BasicVPSProvider;
+import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -15,7 +14,10 @@ import com.fathzer.odvpn.utils.Registerable;
     value = "digitalOcean",
     classes = {VPSProvider.class}
 )
-public class DigitalOceanVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
+public class DigitalOceanVPS extends BasicVPSProvider<BasicTokenAuthVPSSettings> {
+    private static final String DEFAULT_REGION = "sfo3";
+    private static final String DEFAULT_INSTANCE_TYPE = "s-1vcpu-512mb-10gb";
+    
     @Override
     public String name() {
         return "DigitalOcean VPS";
@@ -26,23 +28,15 @@ public class DigitalOceanVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
         return BasicTokenAuthVPSSettings.class;
     }
 
-    @Override
-    public List<String> checkConfiguration() {
-        return List.of();
+    protected BasicVPSProviderClient getClient() {
+        return new DigitalOceanClient(getToken());
     }
 
-    @Override
-    public VPSState createVPS(Consumer<VPSState> progress) {
-        throw new UnsupportedOperationException();
+    protected String getDefaultRegion() {
+        return DEFAULT_REGION;
     }
 
-    @Override
-    public boolean exists(String id) {
-        return false;
-    }
-
-    @Override
-    public void deleteVPS(String id) {
-        throw new UnsupportedOperationException();
+    protected String getDefaultInstanceType() {
+        return DEFAULT_INSTANCE_TYPE;
     }
 }
