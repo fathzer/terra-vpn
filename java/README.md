@@ -43,6 +43,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
   - [x] Implémentation.
   - [x] Doc.
 - [x] Implémentation du fournisseur de VPS Vultr.
+- [x] Implémentation du fournisseur de VPS Hetzner.
 - [ ] Portage du fournisseur de VPS Scaleway en Full Java
 - [x] Tester les implémentations des fournisseurs de DDNS.
   - [x] Switcher d'une implémentation sh à Java.
