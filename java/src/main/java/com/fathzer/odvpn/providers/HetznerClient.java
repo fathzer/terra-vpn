@@ -15,6 +15,7 @@ import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public class HetznerClient extends BasicVPSProviderClient {
@@ -73,7 +74,8 @@ public class HetznerClient extends BasicVPSProviderClient {
         return "/servers";
     }
 
-    public String create(VPSCreationSettings settings) throws IOException {
+    @Override
+    public String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException {
         IOFunction<String, String> idGetter = response -> this.objectMapper.readTree(response).get("server").get("id").asText();
         record InstanceCreationRequest(
             String name,
@@ -84,7 +86,7 @@ public class HetznerClient extends BasicVPSProviderClient {
             Map<String, String> labels) {}
         return create(settings, s->new InstanceCreationRequest(
             s.name(), s.region(), s.instanceType(),
-            "docker-ce", List.of(s.sshKeyId()), Map.of("application", "On_demand_VPN")), idGetter);
+            "docker-ce", List.of(s.sshKeyId()), Map.of("application", "On-Demand-VPN")), idGetter);
     }
 
     @Override

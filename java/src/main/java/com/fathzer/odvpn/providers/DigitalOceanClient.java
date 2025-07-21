@@ -14,10 +14,21 @@ import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public class DigitalOceanClient extends BasicVPSProviderClient {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record Region(String slug, boolean available, List<String> sizes) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record RegionsResponse(@JsonProperty("regions") List<Region> regions) {}
+    private record FirewallSource(List<String> addresses) {}
+    private record FirewallRule(String protocol, String ports, List<FirewallSource> sources) {}
+
     private static final String API_URL = "https://api.digitalocean.com/v2";
+
+    private static final String FIREWALLS_PATH = "/firewalls";
+    private static final FirewallRule SSH_RULE = new FirewallRule("tcp", "22", List.of(new FirewallSource(List.of("0.0.0.0/0", "::/0"))));
 
     public DigitalOceanClient(String token) {
         super(token);
@@ -38,11 +49,6 @@ public class DigitalOceanClient extends BasicVPSProviderClient {
         return super.getRegionsPath()+"?per_page=200";
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Region(String slug, boolean available, List<String> sizes) {}
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record RegionsResponse(@JsonProperty("regions") List<Region> regions) {}
-
     @Override
     public void checkRegion(String region) throws IOException {
         checkRegion(region, response -> this.objectMapper.readValue(response, RegionsResponse.class).regions().stream().filter(r -> r.available).map(Region::slug));
@@ -59,41 +65,61 @@ public class DigitalOceanClient extends BasicVPSProviderClient {
 
     @Override
     protected String getInstancesPath() {
-        return "/servers";
+        return "/droplets";
     }
 
-    public String create(VPSCreationSettings settings) throws IOException {
-        IOFunction<String, String> idGetter = response -> this.objectMapper.readTree(response).get("server").get("id").asText();
+    @Override
+    public String create(VPSCreationSettings settings, VPNConfig config) throws IOException {
+        // First create the droplet
+        IOFunction<String, String> idGetter = response -> this.objectMapper.readTree(response).get("droplet").get("id").asText();
         record InstanceCreationRequest(
             String name,
-            String location,
-            @JsonProperty("server_type") String serverType,
+            String region,
+            String size,
             String image,
             @JsonProperty("ssh_keys") List<String> sshKeyIds,
-            Map<String, String> labels) {}
-        return create(settings, s->new InstanceCreationRequest(
-            s.name(), s.region(), s.instanceType(),
-            "docker-ce", List.of(s.sshKeyId()), Map.of("application", "On_demand_VPN")), idGetter);
+            Map<String, String> tags) {}
+        final String serverId = create(settings, s->new InstanceCreationRequest(s.name(), s.region(), s.instanceType(),
+            "docker-20-04", List.of(s.sshKeyId()), Map.of("application", "On-Demand-Vpn")), idGetter);
+        // Then create the firewall and adds the droplet to it
+        final FirewallRule vpnRule = new FirewallRule(config.protocol().name().toLowerCase(), Integer.toString(config.port()), List.of(new FirewallSource(List.of("0.0.0.0/0", "::/0"))));
+        record FirewallCreationRequest(
+            String name,
+            @JsonProperty("droplet_ids") List<String> dropletIds,
+            @JsonProperty("inbound_rules") List<FirewallRule> rules) {}
+        final FirewallCreationRequest firewallCreationRequest = new FirewallCreationRequest("On-Demand-Vpn", List.of(serverId), List.of(SSH_RULE, vpnRule));
+        final String firewallResponseBody = this.post(URI.create(getRootUrl() + FIREWALLS_PATH), firewallCreationRequest);
+        final String firewallId = this.objectMapper.readTree(firewallResponseBody).get("firewall").get("id").asText();
+        return serverId+"/"+firewallId;
     }
 
     @Override
     public VPSState getState(String id) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + id)).build());
-        final JsonNode server = this.objectMapper.readTree(response.body()).get("server");
+        final String serverId = id.split("/")[0];
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + serverId)).build());
+        final JsonNode server = this.objectMapper.readTree(response.body()).get("droplet");
         Status status = Status.STARTING;
         String ip = null;
         if (!server.isNull()) {
-            final String hetznerStatus = server.get("status").asText();
-            final JsonNode ipNode = server.path("public_net").path("ipv4");
+            final String doStatus = server.get("status").asText();
+            final JsonNode ipNode = server.path("networks").path("v4").get(0);
             if (!ipNode.isNull()) {
-                ip = ipNode.get("ip").asText().trim();
+                ip = ipNode.get("ip_address").asText().trim();
                 if (ip.isEmpty()) {
                 	ip = null;
                 } else {
-                	status = "running".equals(hetznerStatus) ? Status.READY : Status.IP_READY;
+                	status = "active".equals(doStatus) ? Status.READY : Status.IP_READY;
                 }
             }
         }
         return new VPSState(id, ip, status);
+    }
+
+    @Override
+    public void delete(String id) throws IOException {
+        final String serverId = id.split("/")[0];
+        final String firewallId = id.split("/")[1];
+        super.delete(serverId);
+        this.doRequest(this.newRequest(URI.create(getRootUrl() + FIREWALLS_PATH + "/" + firewallId)).DELETE().build());
     }
 }

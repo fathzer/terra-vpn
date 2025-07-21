@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.repository.VPNConfig;
 
 class BasicVPSProviderClientTest {
 
@@ -72,7 +73,7 @@ class BasicVPSProviderClientTest {
         }
 
         @Override
-        public String create(VPSCreationSettings request) throws IOException {
+        public String create(VPSCreationSettings request, VPNConfig vpnConfig) throws IOException {
             throw new UnsupportedOperationException("Not implemented");
         }
 

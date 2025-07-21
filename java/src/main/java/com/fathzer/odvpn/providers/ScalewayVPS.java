@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -32,7 +33,7 @@ public class ScalewayVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
     }
 
     @Override
-    public VPSState createVPS(Consumer<VPSState> progress) {
+    public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) {
         throw new UnsupportedOperationException();
     }
 

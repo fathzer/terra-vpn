@@ -24,18 +24,16 @@ public class HetznerVPS extends BasicVPSProvider<BasicTokenAuthVPSSettings> {
     }
 
     @Override
-    public Class<BasicTokenAuthVPSSettings> getConfigClass() {
-        return BasicTokenAuthVPSSettings.class;
-    }
-
     protected BasicVPSProviderClient getClient() {
         return new HetznerClient(getToken());
     }   
 
+    @Override
     protected String getDefaultRegion() {
         return DEFAULT_REGION;
     }
 
+    @Override
     protected String getDefaultInstanceType() {
         return DEFAULT_INSTANCE_TYPE;
     }

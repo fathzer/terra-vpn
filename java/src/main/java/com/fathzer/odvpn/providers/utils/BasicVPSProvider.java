@@ -11,12 +11,19 @@ import org.slf4j.LoggerFactory;
 
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.VPSProvider;
 
 public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> extends VPSProvider<T> {
     private static final Logger logger = LoggerFactory.getLogger(BasicVPSProvider.class);
 
     protected abstract BasicVPSProviderClient getClient();
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Class<T> getConfigClass() {
+        return (Class<T>) BasicTokenAuthVPSSettings.class;
+    }
 
     protected String getToken() {
         return resolve(settings.getToken());
@@ -73,11 +80,11 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
     }
 
     @Override
-    public VPSState createVPS(Consumer<VPSState> progress) throws IOException {
+    public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) throws IOException {
         try (BasicVPSProviderClient client = getClient()) {
             final String sshKeyId = client.getSSHKeyId(getSshKeyName());
             final String id = client.create(new VPSCreationSettings(getInstanceName(), getDefaultRegion(),
-                getDefaultInstanceType(), sshKeyId));
+                getDefaultInstanceType(), sshKeyId), vpnConfig);
             if (logger.isInfoEnabled()) logger.info("{} instance created with ID {} start waiting for it to be ready", this.name(), id);
             VPSState state;
             for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {

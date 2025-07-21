@@ -28,15 +28,17 @@ public class DigitalOceanVPS extends BasicVPSProvider<BasicTokenAuthVPSSettings>
         return BasicTokenAuthVPSSettings.class;
     }
 
+    @Override
     protected BasicVPSProviderClient getClient() {
         return new DigitalOceanClient(getToken());
     }
 
+    @Override
     protected String getDefaultRegion() {
         return DEFAULT_REGION;
     }
 
-    protected String getDefaultInstanceType() {
+        protected String getDefaultInstanceType() {
         return DEFAULT_INSTANCE_TYPE;
     }
 }

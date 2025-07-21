@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IPv4Validator;
 import com.fathzer.odvpn.utils.Registerable;
 
@@ -53,7 +54,7 @@ public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
     }
 
     @Override
-    public VPSState createVPS(Consumer<VPSState> progress) {
+    public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) {
         return new VPSState("permanentServer", settings.ip, Status.READY);
     }
 

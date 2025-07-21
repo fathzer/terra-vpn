@@ -11,6 +11,7 @@ import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public class VultrClient extends BasicVPSProviderClient {
@@ -81,14 +82,14 @@ public class VultrClient extends BasicVPSProviderClient {
     }
 
     @Override
-    public String create(VPSCreationSettings request) throws IOException {
+    public String create(VPSCreationSettings request, VPNConfig vpnConfig) throws IOException {
         IOFunction<String, String> idGetter = response -> this.objectMapper.readValue(response, InstanceFullResponse.class).instance().id;
         record InstanceCreationRequest(String region, String plan, String label,
             @JsonProperty("image_id") String imageId, String backups, List<String> tags,
             @JsonProperty("sshkey_id") List<String> sshkeyIds) {}
 
         return create(request, s->new InstanceCreationRequest(
-            s.region(), s.instanceType(), s.name(), "docker-ce", "no", List.of("application"), List.of(s.sshKeyId())), idGetter);
+            s.region(), s.instanceType(), s.name(), "docker-ce", "no", List.of("On-Demand-Vpn"), List.of(s.sshKeyId())), idGetter);
     }
 
     @Override

@@ -6,6 +6,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.fathzer.odvpn.repository.VPNConfig;
+
 public abstract class VPSProvider<T> extends Provider<T> {
     /**
      * Represents the state of a Virtual Private Server (VPS) instance.
@@ -75,7 +77,7 @@ public abstract class VPSProvider<T> extends Provider<T> {
      * @param progress A consumer that receives progress updates during the VPS creation process
      * @return A VPSState object representing the created VPS instance, containing its unique identifier and public IP address
      */
-    public abstract VPSState createVPS(Consumer<VPSState> progress) throws IOException;
+    public abstract VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) throws IOException;
 
     /**
      * Creates a human-readable name for the VPS instance.

@@ -216,7 +216,7 @@ public abstract class AbstractOnDemandVPNManager {
         final String ip;
         if (!isServerRunning()) {
             DNSUpdateProgressListener listener = new DNSUpdateProgressListener(ddnsUpdated, progressListener);
-            VPSProvider.VPSState vpsState = config.vps().createVPS(listener);
+            VPSProvider.VPSState vpsState = config.vps().createVPS(config.vpn(), listener);
             ip = vpsState.ip();
             saveLocalVPSInfo(new VPSInfo(vpsState.id(), ip));
         } else {

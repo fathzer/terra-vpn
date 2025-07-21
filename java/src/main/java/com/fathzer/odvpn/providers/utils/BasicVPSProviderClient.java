@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 
 import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
@@ -94,7 +95,7 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
         return "/instances";
     }
 
-    public abstract String create(VPSCreationSettings settings) throws IOException;
+    public abstract String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException;
 
     /**
      * Creates a new instance.
@@ -105,12 +106,22 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
      * @throws IOException if an I/O error occurs
      */
     protected <T> String create(VPSCreationSettings request, Function<VPSCreationSettings, T> bodyRequestBuilder, IOFunction<String, String> idGetter) throws IOException {
-        final T body = bodyRequestBuilder.apply(request);
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath())).
+        return idGetter.apply(this.post(URI.create(getRootUrl() + getInstancesPath()), bodyRequestBuilder.apply(request)));
+    }
+
+    /**
+     * Sends a POST request to the specified URI with the given body.
+     * @param uri the URI to send the request to
+     * @param body the body of the request
+     * @return the response body
+     * @throws IOException if an I/O error occurs
+     */
+    protected String post(URI uri, Object body) throws IOException {
+        final HttpResponse<String> response = this.doRequest(this.newRequest(uri).
             POST(HttpRequest.BodyPublishers.ofString(this.objectMapper.writeValueAsString(body))).
             header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).
             build());
-        return idGetter.apply(response.body());
+        return response.body();
     }
 
     public abstract VPSState getState(String id) throws IOException;
