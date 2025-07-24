@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,13 +19,16 @@ import org.mockito.stubbing.Answer;
 
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
-
+/**
+ * Base class for tests of VPSProviderClient implementations.
+ */
 public abstract class VPSProviderClientTestBase {
     private static final String TEST_TOKEN = "test-token";
 
     protected BasicVPSProviderClient client;
     protected record RequestKey(String uri, String method) {}
     protected Map<RequestKey, HttpResponse<String>> mockResponses = new HashMap<>();
+    protected List<HttpRequest> receivedRequests = new ArrayList<>();
 
     protected abstract Class<? extends BasicVPSProviderClient> getClientClass();
 
@@ -31,6 +36,7 @@ public abstract class VPSProviderClientTestBase {
     void setUp() {
         // Clear mock responses to avoid test pollution
         mockResponses.clear();
+        receivedRequests.clear();
         // Create a mock of the client to test
         client = Mockito.mock(getClientClass(), Mockito.withSettings()
                 .useConstructor(TEST_TOKEN)
@@ -39,6 +45,7 @@ public abstract class VPSProviderClientTestBase {
         // Mock the doRequest method to delegate to mockResponses
         Answer<HttpResponse<String>> answer = (Answer<HttpResponse<String>>) invocation -> {
             HttpRequest request = invocation.getArgument(0);
+            receivedRequests.add(request);
             String reqUri = request.uri().toString();
             String reqMethod = request.method().toUpperCase();
             assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
