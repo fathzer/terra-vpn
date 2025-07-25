@@ -63,7 +63,6 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         String dropletUri = API_URL + "droplets";
         String dropletResponse = "{\"droplet\": {\"id\": \"droplet-id\"}}";
         setupMockResponse(dropletUri, "POST", dropletResponse, body -> {
-            assertNotNull(body, "Request body JSON of droplet request is null");
             assertTrue(body.contains("\"name\":\"test-droplet\""), "Droplet name is missing from JSON");
             assertTrue(body.contains("\"region\":\"nyc1\""), "Region is missing from JSON");
             assertTrue(body.contains("\"size\":\"s-1vcpu-1gb\""), "Size is missing from JSON");
@@ -74,7 +73,6 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         String firewallUri = API_URL + "firewalls";
         String firewallResponse = "{\"firewall\": {\"id\": \"firewall-id\"}}";
         setupMockResponse(firewallUri, "POST", firewallResponse, body -> {
-            assertNotNull(body, "Request body JSON of firewall request is null");
             assertTrue(body.contains("\"protocol\":\"udp\""), "UDP rule is missing from JSON");
             assertTrue(body.contains("\"ports\":\"1194\""), "UDP port 1194 is missing from JSON");
             assertTrue(body.contains("\"protocol\":\"tcp\""), "TCP rule is missing from JSON");

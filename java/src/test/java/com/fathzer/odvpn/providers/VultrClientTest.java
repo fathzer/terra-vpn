@@ -18,6 +18,35 @@ class VultrClientTest extends VPSProviderClientTestBase {
     protected Class<? extends BasicVPSProviderClient> getClientClass() {
         return VultrClient.class;
     }
+
+    @Test
+    void testCreate() throws Exception {
+        var settings = new com.fathzer.odvpn.providers.utils.VPSCreationSettings("test-instance", "ewr", "vc2-1c-1gb", "98765");
+        var vpnConfig = new com.fathzer.odvpn.repository.VPNConfig("vpn.example.com", null, com.fathzer.odvpn.repository.VPNConfig.Protocol.UDP, 1194);
+
+        // Mock POST instance creation
+        String instanceUri = API_URL + "instances";
+        String instanceResponse = "{\"instance\": {\"id\": \"instance-id\"}}";
+        setupMockResponse(instanceUri, "POST", instanceResponse, body -> {
+            assertTrue(body.contains("\"region\":\"ewr\""), "Region is missing from JSON");
+            assertTrue(body.contains("\"plan\":\"vc2-1c-1gb\""), "Plan is missing from JSON");
+            assertTrue(body.contains("\"label\":\"test-instance\""), "Label is missing from JSON");
+            assertTrue(body.contains("\"image_id\":\"docker-ce\""), "Image ID is missing from JSON");
+            assertTrue(body.contains("\"sshkey_id\":[\"98765\"]"), "SSH key ID is missing from JSON");
+            assertTrue(body.contains("\"tags\":[\"On-Demand-Vpn\"]"), "Tags are missing from JSON");
+        });
+
+        String result = client.create(settings, vpnConfig);
+        assertEquals("instance-id", result, "Returned instance ID does not match expected");
+    }
+
+    @Test
+    void testDelete() {
+        String id = "instance-id";
+        String instanceUri = API_URL + "instances/" + id;
+        setupMockResponse(instanceUri, "DELETE", "{}", null);
+        assertDoesNotThrow(() -> client.delete(id), "Delete should not throw for valid instance ID");
+    }
     
     @Test
     void testGetState() throws Exception {

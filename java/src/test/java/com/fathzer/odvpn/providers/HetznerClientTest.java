@@ -26,6 +26,34 @@ class HetznerClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
+    void testCreate() throws Exception {
+        var settings = new com.fathzer.odvpn.providers.utils.VPSCreationSettings("test-server", "fsn1", "cx11", "12345");
+        var vpnConfig = new com.fathzer.odvpn.repository.VPNConfig("vpn.example.com", null, com.fathzer.odvpn.repository.VPNConfig.Protocol.UDP, 1194);
+
+        // Mock POST server creation
+        String serverUri = API_URL + "servers";
+        String serverResponse = "{\"server\": {\"id\": \"server-id\"}}";
+        setupMockResponse(serverUri, "POST", serverResponse, body -> {
+            assertTrue(body.contains("\"name\":\"test-server\""), "Server name is missing from JSON");
+            assertTrue(body.contains("\"location\":\"fsn1\""), "Location is missing from JSON");
+            assertTrue(body.contains("\"server_type\":\"cx11\""), "Server type is missing from JSON");
+            assertTrue(body.contains("\"ssh_keys\":[\"12345\"]"), "SSH key is missing from JSON");
+            assertTrue(body.contains("\"labels\":{\"application\":\"On-Demand-VPN\"}"), "Labels are missing from JSON");
+        });
+
+        String result = client.create(settings, vpnConfig);
+        assertEquals("server-id", result, "Returned server ID does not match expected");
+    }
+
+    @Test
+    void testDelete() {
+        String id = "server-id";
+        String serverUri = API_URL + "servers/" + id;
+        setupMockResponse(serverUri, "DELETE", "{}", null);
+        assertDoesNotThrow(() -> client.delete(id), "Delete should not throw for valid server ID");
+    }
+
+    @Test
     void testGetState() throws Exception {
         final String uri = SERVERS_PATH + TEST_INSTANCE_ID;
         // STARTING when no server object

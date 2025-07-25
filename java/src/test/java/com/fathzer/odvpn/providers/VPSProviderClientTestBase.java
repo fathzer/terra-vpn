@@ -1,6 +1,6 @@
 package com.fathzer.odvpn.providers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -54,7 +54,9 @@ public abstract class VPSProviderClientTestBase {
                 throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
             }
             if (respData.requestBodyCheckConsumer != null) {
-                respData.requestBodyCheckConsumer.accept(getRequestBodyJson(request));
+                final String requestBodyJson = getRequestBodyJson(request);
+                assertNotNull(requestBodyJson, "Request body JSON of " + reqMethod + " " + reqUri + " is null");
+                respData.requestBodyCheckConsumer.accept(requestBodyJson);
             }
             return respData.response();
         };
