@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
@@ -26,9 +28,9 @@ public abstract class VPSProviderClientTestBase {
     private static final String TEST_TOKEN = "test-token";
 
     protected BasicVPSProviderClient client;
-    protected record RequestKey(String uri, String method) {}
-    protected Map<RequestKey, HttpResponse<String>> mockResponses = new HashMap<>();
-    protected List<HttpRequest> receivedRequests = new ArrayList<>();
+    private record RequestKey(String uri, String method) {}
+    private record ResponseData(HttpResponse<String> response, Consumer<String> requestBodyCheckConsumer) {}
+    private Map<RequestKey, ResponseData> mockResponses = new HashMap<>();
 
     protected abstract Class<? extends BasicVPSProviderClient> getClientClass();
 
@@ -36,7 +38,6 @@ public abstract class VPSProviderClientTestBase {
     void setUp() {
         // Clear mock responses to avoid test pollution
         mockResponses.clear();
-        receivedRequests.clear();
         // Create a mock of the client to test
         client = Mockito.mock(getClientClass(), Mockito.withSettings()
                 .useConstructor(TEST_TOKEN)
@@ -45,15 +46,17 @@ public abstract class VPSProviderClientTestBase {
         // Mock the doRequest method to delegate to mockResponses
         Answer<HttpResponse<String>> answer = (Answer<HttpResponse<String>>) invocation -> {
             HttpRequest request = invocation.getArgument(0);
-            receivedRequests.add(request);
             String reqUri = request.uri().toString();
             String reqMethod = request.method().toUpperCase();
             assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
-            HttpResponse<String> resp = mockResponses.get(new RequestKey(reqUri, reqMethod));
-            if (resp == null) {
+            ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
+            if (respData == null) {
                 throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
             }
-            return resp;
+            if (respData.requestBodyCheckConsumer != null) {
+                respData.requestBodyCheckConsumer.accept(getRequestBodyJson(request));
+            }
+            return respData.response();
         };
         try {
             Mockito.doAnswer(answer).when(client).doRequest(Mockito.any(HttpRequest.class));
@@ -68,18 +71,40 @@ public abstract class VPSProviderClientTestBase {
      * @param method The HTTP method (GET, POST, etc)
      * @param responseBody The mock response body
      */
-    protected void setupMockResponse(String uri, String method, String responseBody) {
+    protected void setupMockResponse(String uri, String method, String responseBody, Consumer<String> requestBodyCheckConsumer) {
         @SuppressWarnings("unchecked")
 		HttpResponse<String> mockResponse = mock(HttpResponse.class);
         when(mockResponse.statusCode()).thenReturn(200);
         when(mockResponse.body()).thenReturn(responseBody);
-        mockResponses.put(new RequestKey(uri, method.toUpperCase()), mockResponse);
+        mockResponses.put(new RequestKey(uri, method.toUpperCase()), new ResponseData(mockResponse, requestBodyCheckConsumer));
     }
 
     /**
-     * Backward-compatible version for GET requests only.
+     * Sets up a mock response for a GET request to a given URI.
+     * @param uri The request URI
+     * @param responseBody The mock response body
      */
     protected void setupMockResponse(String uri, String responseBody) {
-        setupMockResponse(uri, "GET", responseBody);
+        setupMockResponse(uri, "GET", responseBody, null);
+    }
+
+    /**
+     * Gets body JSON of a HttpRequest as a String.
+     */
+    private static String getRequestBodyJson(HttpRequest req) {
+        return req.bodyPublisher().map(bp -> {
+            StringBuilder sb = new StringBuilder();
+            bp.subscribe(new Flow.Subscriber<ByteBuffer>() {
+                @Override public void onSubscribe(Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
+                @Override public void onNext(ByteBuffer bb) {
+                    byte[] bytes = new byte[bb.remaining()];
+                    bb.get(bytes);
+                    sb.append(new String(bytes, StandardCharsets.UTF_8));
+                }
+                @Override public void onError(Throwable throwable) {}
+                @Override public void onComplete() {}
+            });
+            return sb.toString();
+        }).orElse(null);
     }
 }

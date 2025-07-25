@@ -3,10 +3,6 @@ package com.fathzer.odvpn.providers;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
-import java.net.http.HttpRequest;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Flow;
 
 import org.junit.jupiter.api.Test;
 
@@ -66,38 +62,28 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         // Mock POST droplet creation
         String dropletUri = API_URL + "droplets";
         String dropletResponse = "{\"droplet\": {\"id\": \"droplet-id\"}}";
-        setupMockResponse(dropletUri, "POST", dropletResponse);
+        setupMockResponse(dropletUri, "POST", dropletResponse, body -> {
+            assertNotNull(body, "Request body JSON of droplet request is null");
+            assertTrue(body.contains("\"name\":\"test-droplet\""), "Droplet name is missing from JSON");
+            assertTrue(body.contains("\"region\":\"nyc1\""), "Region is missing from JSON");
+            assertTrue(body.contains("\"size\":\"s-1vcpu-1gb\""), "Size is missing from JSON");
+            assertTrue(body.contains("\"ssh_keys\":[\"12345\"]"), "SSH key is missing from JSON");            
+        });
 
         // Mock POST firewall creation
         String firewallUri = API_URL + "firewalls";
         String firewallResponse = "{\"firewall\": {\"id\": \"firewall-id\"}}";
-        setupMockResponse(firewallUri, "POST", firewallResponse);
+        setupMockResponse(firewallUri, "POST", firewallResponse, body -> {
+            assertNotNull(body, "Request body JSON of firewall request is null");
+            assertTrue(body.contains("\"protocol\":\"udp\""), "UDP rule is missing from JSON");
+            assertTrue(body.contains("\"ports\":\"1194\""), "UDP port 1194 is missing from JSON");
+            assertTrue(body.contains("\"protocol\":\"tcp\""), "TCP rule is missing from JSON");
+            assertTrue(body.contains("\"ports\":\"22\""), "TCP port 22 is missing from JSON");
+        });
 
-        // Appel de la méthode à tester
+        // Call the method to test
         String result = client.create(settings, vpnConfig);
         assertEquals("droplet-id/firewall-id", result);
-
-        // --- Check droplet request ---
-        HttpRequest dropletReq = receivedRequests.stream()
-            .filter(r -> r.uri().toString().equals(dropletUri) && r.method().equalsIgnoreCase("POST"))
-            .findFirst().orElseThrow(() -> new AssertionError("Pas de requête POST /droplets trouvée"));
-        String dropletJson = getRequestBodyJson(dropletReq);
-        assertNotNull(dropletJson, "Le body JSON de la requête droplet est null");
-        assertTrue(dropletJson.contains("\"name\":\"test-droplet\""), "Nom du droplet absent du JSON");
-        assertTrue(dropletJson.contains("\"region\":\"nyc1\""), "Région absente du JSON");
-        assertTrue(dropletJson.contains("\"size\":\"s-1vcpu-1gb\""), "Taille absente du JSON");
-        assertTrue(dropletJson.contains("\"ssh_keys\":[\"12345\"]"), "Clé SSH absente du JSON");
-
-        // --- Check firewall request ---
-        HttpRequest firewallReq = receivedRequests.stream()
-            .filter(r -> r.uri().toString().equals(firewallUri) && r.method().equalsIgnoreCase("POST"))
-            .findFirst().orElseThrow(() -> new AssertionError("Pas de requête POST /firewalls trouvée"));
-        String firewallJson = getRequestBodyJson(firewallReq);
-        assertNotNull(firewallJson, "Le body JSON de la requête firewall est null");
-        assertTrue(firewallJson.contains("\"protocol\":\"udp\""), "Règle UDP absente");
-        assertTrue(firewallJson.contains("\"ports\":\"1194\""), "Port UDP 1194 absent");
-        assertTrue(firewallJson.contains("\"protocol\":\"tcp\""), "Règle TCP absente");
-        assertTrue(firewallJson.contains("\"ports\":\"22\""), "Port TCP 22 absent");
     }
 
     @Test
@@ -105,10 +91,10 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         String id = "droplet-id/firewall-id";
         // Mock DELETE droplet
         String dropletUri = API_URL + "droplets/" + "droplet-id";
-        setupMockResponse(dropletUri, "DELETE", "{}");
+        setupMockResponse(dropletUri, "DELETE", "{}", null);
         // Mock DELETE firewall
         String firewallUri = API_URL + "firewalls/" + "firewall-id";
-        setupMockResponse(firewallUri, "DELETE", "{}");
+        setupMockResponse(firewallUri, "DELETE", "{}", null);
 
         assertDoesNotThrow(() -> client.delete(id));
     }
@@ -128,26 +114,6 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         // READY
         setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "active", IP_V4_JSON));
         assertEquals(new VPSState(TEST_INSTANCE_ID, IP, Status.READY), client.getState(TEST_INSTANCE_ID));
-    }
-
-    /**
-     * Récupère le body JSON d'une HttpRequest sous forme de String.
-     */
-    private static String getRequestBodyJson(HttpRequest req) {
-        return req.bodyPublisher().map(bp -> {
-            StringBuilder sb = new StringBuilder();
-            bp.subscribe(new Flow.Subscriber<ByteBuffer>() {
-                @Override public void onSubscribe(Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
-                @Override public void onNext(ByteBuffer bb) {
-                    byte[] bytes = new byte[bb.remaining()];
-                    bb.get(bytes);
-                    sb.append(new String(bytes, StandardCharsets.UTF_8));
-                }
-                @Override public void onError(Throwable throwable) {}
-                @Override public void onComplete() {}
-            });
-            return sb.toString();
-        }).orElse(null);
     }
 }
 
