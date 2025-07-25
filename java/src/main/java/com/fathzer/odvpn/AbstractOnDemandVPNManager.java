@@ -236,7 +236,8 @@ public abstract class AbstractOnDemandVPNManager {
         Ssh.Builder builder = new Ssh.Builder(ip, keyPath).user(sshUser).maxTryCount(24);
         progressListener.waitingSSHConnection(ip);
         try (Ssh ssh = builder.build()) {
-            // Do nothing, we just connect to check if the connection is available
+            // Perform VPS Provider initialization tasks (install Docker, set firewall, etc ... - or maybe nothing, it depends on the provider)
+            config.vps().initVPS(ssh, config.vpn());
         }
         this.status.sshReady = true;
 

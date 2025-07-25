@@ -1,9 +1,14 @@
 package com.fathzer.odvpn.providers;
 
+import java.io.IOException;
+import java.io.OutputStream;
+
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
 import com.fathzer.odvpn.providers.utils.BasicVPSProvider;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
+import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.odvpn.ssh.Ssh;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -38,7 +43,13 @@ public class DigitalOceanVPS extends BasicVPSProvider<BasicTokenAuthVPSSettings>
         return DEFAULT_REGION;
     }
 
-        protected String getDefaultInstanceType() {
+    @Override
+    protected String getDefaultInstanceType() {
         return DEFAULT_INSTANCE_TYPE;
+    }
+
+    @Override
+    public void initVPS(Ssh ssh, VPNConfig config) throws IOException {
+        ssh.exec("sudo ufw disable", OutputStream.nullOutputStream(), OutputStream.nullOutputStream());
     }
 }

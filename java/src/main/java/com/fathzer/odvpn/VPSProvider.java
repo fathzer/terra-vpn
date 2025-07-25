@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.odvpn.ssh.Ssh;
 
 public abstract class VPSProvider<T> extends Provider<T> {
     /**
@@ -58,8 +59,8 @@ public abstract class VPSProvider<T> extends Provider<T> {
     /**
      * Checks the settings for the VPS provider.
      * This method is used to validate the configuration before creating a VPS instance.
-     *
      * @return A list of configuration errors, or an empty list if the configuration is valid
+     * @throws IOException if an I/O error occurs
      */
     public abstract List<String> checkConfiguration() throws IOException;
 
@@ -67,6 +68,7 @@ public abstract class VPSProvider<T> extends Provider<T> {
      * Checks if the VPS instance exists.
      * @param id The unique identifier of the VPS instance in the provider's system
      * @return true if the VPS instance exists, false otherwise
+     * @throws IOException if an I/O error occurs
      */
     public abstract boolean exists(String id) throws IOException;
 
@@ -76,8 +78,20 @@ public abstract class VPSProvider<T> extends Provider<T> {
      *
      * @param progress A consumer that receives progress updates during the VPS creation process
      * @return A VPSState object representing the created VPS instance, containing its unique identifier and public IP address
+     * @throws IOException if an I/O error occurs
      */
     public abstract VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) throws IOException;
+
+    /**
+     * Perform VPS initialization tasks (install Docker, set firewall, etc ...)
+     * The default implementation does nothing.
+     * @param ssh A SSH connection to the VPS instance
+     * @param vpnConfig The VPN configuration
+     * @throws IOException if an I/O error occurs
+     */
+    public void initVPS(Ssh ssh, VPNConfig vpnConfig) throws IOException {
+        // Does nothing by default
+    }
 
     /**
      * Creates a human-readable name for the VPS instance.
@@ -90,6 +104,7 @@ public abstract class VPSProvider<T> extends Provider<T> {
      * Deletes an existing Virtual Private Server (VPS) instance.
      * This method is responsible for removing a VPS instance from the provider's system.
      * @param id The unique identifier of the VPS instance to be deleted
+     * @throws IOException if an I/O error occurs
      */
     public abstract void deleteVPS(String id) throws IOException;
 
