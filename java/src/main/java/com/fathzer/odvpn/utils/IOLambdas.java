@@ -30,4 +30,9 @@ public class IOLambdas {
 	public static interface IOPredicate<T> {
 		boolean test(T t) throws IOException;
 	}
+
+    @FunctionalInterface
+    public static interface IOSupplier<T> {
+        T get() throws IOException;
+    }
 }

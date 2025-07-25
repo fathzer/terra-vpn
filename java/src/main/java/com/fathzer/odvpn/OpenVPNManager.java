@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.ssh.Ssh;
 import com.fathzer.odvpn.utils.ListOutputStream;
+import com.fathzer.odvpn.utils.IOLambdas.IOSupplier;
 
 /**
  * Manages the openvpn server on the remote VPS
@@ -25,9 +26,9 @@ import com.fathzer.odvpn.utils.ListOutputStream;
 public class OpenVPNManager implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OpenVPNManager.class);
     /** The OpenVPN image to use */
-    private static final String OPENVPN_IMAGE = "kylemanna/openvpn";
+    static final String OPENVPN_IMAGE = "kylemanna/openvpn";
     /** The OpenVPN configuration folder on the VPS */
-    private static final String OPENVPN_VPS_FOLDER = "/etc/openvpn";
+    static final String OPENVPN_VPS_FOLDER = "/etc/openvpn";
 
     static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
 
@@ -57,7 +58,11 @@ public class OpenVPNManager implements AutoCloseable {
      * @throws IOException if an error occurs
      */
     OpenVPNManager(String address, String sshUser, Path sshPrivateKey) throws IOException {
-        this.ssh = new Ssh.Builder(address, sshPrivateKey.toAbsolutePath().toString()).user(sshUser).build();
+        this(() -> new Ssh.Builder(address, sshPrivateKey.toAbsolutePath().toString()).user(sshUser).build());
+    }
+
+    protected OpenVPNManager(IOSupplier<Ssh> sshSupplier) throws IOException {
+        this.ssh = sshSupplier.get();
     }
 
     /** Saves the remote openvpn backup config to the local file
@@ -201,7 +206,7 @@ public class OpenVPNManager implements AutoCloseable {
         ssh.close();
     }
 
-    private static void doSSHCommand(Ssh ssh, String command) throws IOException {
+    protected void doSSHCommand(Ssh ssh, String command) throws IOException {
         logger.debug("Executing command: {}", command);
 //        int code = ssh.exec(command, new LoggerOutputStream(logger, LogLevel.DEBUG), new LoggerOutputStream(logger, LogLevel.DEBUG));
         int code = ssh.exec(command, OutputStream.nullOutputStream(), OutputStream.nullOutputStream());

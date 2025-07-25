@@ -103,8 +103,12 @@ public abstract class VPSProviderClientTestBase {
                     bb.get(bytes);
                     sb.append(new String(bytes, StandardCharsets.UTF_8));
                 }
-                @Override public void onError(Throwable throwable) {}
-                @Override public void onComplete() {}
+                @Override public void onError(Throwable throwable) {
+                    // Does nothing
+                }
+                @Override public void onComplete() {
+                    // Does nothing
+                }
             });
             return sb.toString();
         }).orElse(null);
