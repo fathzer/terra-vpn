@@ -1,5 +1,9 @@
 package com.fathzer.odvpn;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -9,12 +13,11 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.repository.InstanceParameters;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 @SuppressWarnings("java:S6068")
 class OpenVPNManagerTest {
@@ -24,8 +27,8 @@ class OpenVPNManagerTest {
         @Override public Class<Object> getConfigClass() { return Object.class; }
         @Override public void deleteVPS(String id) throws IOException { /* no-op for test */ }
         @Override public boolean exists(String id) { return false; }
-        @Override public VPSState createVPS(VPNConfig vpnConfig, java.util.function.Consumer<VPSState> progress) { return null; }
-        @Override public java.util.List<String> checkConfiguration() { return java.util.Collections.emptyList(); }
+        @Override public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) { return null; }
+        @Override public List<String> checkConfiguration() { return List.of(); }
     }
 
     public static class DummyDDNSProvider extends DynamicDNSProvider<Object> {
@@ -75,7 +78,14 @@ class OpenVPNManagerTest {
         manager.restore(localFile);
         verify(mockSsh).exec(eq("sudo rm -f " + OpenVPNManager.OPENVPN_TAR_GZ), any(OutputStream.class), any(OutputStream.class));
         verify(mockSsh).upload(eq(localFile.toString()), eq(OpenVPNManager.OPENVPN_TAR_GZ));
-        verify(mockSsh).exec(argThat((List<String> cmds) -> cmds.contains("sudo rm -rf " + OpenVPNManager.OPENVPN_VPS_FOLDER)), any(OutputStream.class), any(OutputStream.class));
+        verify(mockSsh).exec(eq(java.util.Arrays.asList(
+            "#!/bin/bash",
+            "set -e",
+            "sudo rm -rf " + OpenVPNManager.OPENVPN_VPS_FOLDER,
+            "sudo mkdir -p " + OpenVPNManager.OPENVPN_VPS_FOLDER,
+            "sudo tar -xzf " + OpenVPNManager.OPENVPN_TAR_GZ + " -C " + OpenVPNManager.OPENVPN_VPS_FOLDER,
+            "rm " + OpenVPNManager.OPENVPN_TAR_GZ
+        )), any(OutputStream.class), any(OutputStream.class));
     }
 
     @Test
@@ -97,6 +107,46 @@ class OpenVPNManagerTest {
         doReturn(List.of(user)).when(managerSpy).getUsers();
         managerSpy.addUser("foo");
         verify(mockSsh).exec(eq("docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OpenVPNManager.OPENVPN_IMAGE + " easyrsa build-client-full foo nopass"), any(OutputStream.class), any(OutputStream.class));
+    }
+
+    @Test
+    void testStartSendsCorrectCommand() throws Exception {
+        VPNConfig config = new VPNConfig("vpn.mydomain.com", new String[]{"1.2.3.4", "8.8.8.8"}, VPNConfig.Protocol.UDP, 1194);
+        InstanceParameters params = new InstanceParameters(new DummyVPSProvider(), new DummyDDNSProvider(), config);
+        when(mockSsh.exec(any(String.class), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
+        manager.start(params);
+        String expectedCommand = String.format(
+            "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s",
+            OpenVPNManager.OPENVPN_VPS_FOLDER,
+            config.port(),
+            "1194/" + config.protocol(),
+            OpenVPNManager.OPENVPN_IMAGE
+        );
+        verify(mockSsh).exec(eq(expectedCommand), any(OutputStream.class), any(OutputStream.class));
+    }
+
+
+    @Test
+    void testGetUsersParsesValidAndInvalidUsers() throws Exception {
+        String header = "name,begin,end,status";
+        String validUser = "alice,Mon Jan 1 00:00:00 2024 GMT,Jan  1 00:00:00 2025 GMT,VALID";
+        String revokedUser = "bob,Mon Jan 1 00:00:00 2024 GMT,Jan  1 00:00:00 2025 GMT,REVOKED";
+        String output = header + "\n" + validUser + "\n" + revokedUser;
+
+        when(mockSsh.exec(anyString(), any(OutputStream.class), any(OutputStream.class)))
+            .thenAnswer(invocation -> {
+                OutputStream os = invocation.getArgument(1);
+                os.write(output.getBytes());
+                return 0;
+            });
+
+        List<OpenVPNManager.User> users = manager.getUsers();
+
+        assertEquals(2, users.size());
+        assertEquals("alice", users.get(0).name());
+        assertTrue(users.get(0).valid());
+        assertEquals("bob", users.get(1).name());
+        assertFalse(users.get(1).valid());
     }
 
     @Test

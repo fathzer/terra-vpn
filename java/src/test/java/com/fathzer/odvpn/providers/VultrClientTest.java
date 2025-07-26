@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
+import com.jayway.jsonpath.JsonPath;
+import java.util.List;
 
 class VultrClientTest extends VPSProviderClientTestBase {
     private static final String API_URL = "https://api.vultr.com/v2/";
@@ -28,12 +30,20 @@ class VultrClientTest extends VPSProviderClientTestBase {
         String instanceUri = API_URL + "instances";
         String instanceResponse = "{\"instance\": {\"id\": \"instance-id\"}}";
         setupMockResponse(instanceUri, "POST", instanceResponse, body -> {
-            assertTrue(body.contains("\"region\":\"ewr\""), "Region is missing from JSON");
-            assertTrue(body.contains("\"plan\":\"vc2-1c-1gb\""), "Plan is missing from JSON");
-            assertTrue(body.contains("\"label\":\"test-instance\""), "Label is missing from JSON");
-            assertTrue(body.contains("\"image_id\":\"docker-ce\""), "Image ID is missing from JSON");
-            assertTrue(body.contains("\"sshkey_id\":[\"98765\"]"), "SSH key ID is missing from JSON");
-            assertTrue(body.contains("\"tags\":[\"On-Demand-Vpn\"]"), "Tags are missing from JSON");
+            // Use JsonPath for robust, order-independent assertions
+            // Requires Jayway JsonPath in test dependencies
+
+            // Parse and check top-level fields
+            assertEquals("ewr", JsonPath.read(body, "$.region"), "Region field incorrect");
+            assertEquals("vc2-1c-1gb", JsonPath.read(body, "$.plan"), "Plan field incorrect");
+            assertEquals("test-instance", JsonPath.read(body, "$.label"), "Label field incorrect");
+            assertEquals("docker-ce", JsonPath.read(body, "$.image_id"), "Image ID field incorrect");
+            List<String> sshKeys = JsonPath.read(body, "$.sshkey_id[*]");
+            assertTrue(sshKeys.contains("98765"), "SSH key ID is missing from JSON");
+            List<String> tags = JsonPath.read(body, "$.tags[*]");
+            assertTrue(tags.contains("On-Demand-Vpn"), "Tags are missing from JSON");
+
+
         });
 
         String result = client.create(settings, vpnConfig);
