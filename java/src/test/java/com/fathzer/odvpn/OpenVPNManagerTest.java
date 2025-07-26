@@ -107,6 +107,11 @@ class OpenVPNManagerTest {
         doReturn(List.of(user)).when(managerSpy).getUsers();
         managerSpy.addUser("foo");
         verify(mockSsh).exec(eq("docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OpenVPNManager.OPENVPN_IMAGE + " easyrsa build-client-full foo nopass"), any(OutputStream.class), any(OutputStream.class));
+
+        // Should throw UserAlreadyExistsException if user is already valid
+        var validUser = new OpenVPNManager.User("foo", true, java.time.Instant.now());
+        doReturn(List.of(validUser)).when(managerSpy).getUsers();
+        assertThrows(OpenVPNManager.UserAlreadyExistsException.class, () -> managerSpy.addUser("foo"));
     }
 
     @Test
@@ -141,12 +146,17 @@ class OpenVPNManagerTest {
             });
 
         List<OpenVPNManager.User> users = manager.getUsers();
+        verify(mockSsh).exec(eq("docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_listclients"), any(OutputStream.class), any(OutputStream.class));
 
         assertEquals(2, users.size());
         assertEquals("alice", users.get(0).name());
         assertTrue(users.get(0).valid());
         assertEquals("bob", users.get(1).name());
         assertFalse(users.get(1).valid());
+
+        // Check problems in ssh command
+        when(mockSsh.exec(anyString(), any(OutputStream.class), any(OutputStream.class))).thenReturn(1);
+        assertThrows(IOException.class, () -> manager.getUsers());
     }
 
     @Test
@@ -157,5 +167,9 @@ class OpenVPNManagerTest {
         doReturn(List.of(user)).when(managerSpy).getUsers();
         managerSpy.deleteUser("bar");
         verify(mockSsh).exec(eq("echo yes | docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OpenVPNManager.OPENVPN_IMAGE + " ovpn_revokeclient bar"), any(OutputStream.class), any(OutputStream.class));
+
+        // Should throw UnknownUserException if user does not exist
+        doReturn(List.of()).when(managerSpy).getUsers();
+        assertThrows(OpenVPNManager.UnknownUserException.class, () -> managerSpy.deleteUser("baz"));
     }
 }
