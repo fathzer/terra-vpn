@@ -1,5 +1,6 @@
 package com.fathzer.odvpn.ws;
 
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -17,8 +18,8 @@ import org.springframework.stereotype.Service;
 
 import com.fathzer.odvpn.AbstractOnDemandVPNManager;
 import com.fathzer.odvpn.AbstractOnDemandVPNManager.DetailedStatus;
-import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.LocalDiskOnDemandVPNManager;
+import com.fathzer.odvpn.OpenVPNManager.User;
 import com.fathzer.odvpn.StartProgressListener;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNRepositorySettings;
@@ -89,9 +90,9 @@ public class VpnService {
         return vpn;
     }   
 
-    public void create(String id, InstanceParameters dto, Path openVPNConfigPath, boolean force) throws IOException {
+    public void create(String id, InstanceParameters dto, InputStream openVPNConfigStream, boolean force) throws IOException {
         AbstractOnDemandVPNManager manager = new LocalDiskOnDemandVPNManager(settings, id, dto);
-        manager.init(openVPNConfigPath, force);
+        manager.init(openVPNConfigStream, force);
         storage.put(id, manager);
     }
 

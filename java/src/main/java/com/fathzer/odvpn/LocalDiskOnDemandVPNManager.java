@@ -1,5 +1,6 @@
 package com.fathzer.odvpn;
 
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -64,12 +65,17 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
         return Files.exists(root);
     }
 
+    /**
+     * Saves the configuration in the persistent storage.
+     * @param openVpnConfigStream the InputStream to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
+     * @throws IOException if an I/O error occurs
+     */
     @Override
-    protected void save(Path openVpnConfigPath) throws IOException {
+    protected void save(InputStream openVpnConfigStream) throws IOException {
         Files.createDirectories(root);
         InstanceParametersParser.write(root.resolve("config.json"), config);
-        if (openVpnConfigPath != null) {
-            Files.copy(openVpnConfigPath, root.resolve(OpenVPNManager.OPENVPN_TAR_GZ), StandardCopyOption.REPLACE_EXISTING);
+        if (openVpnConfigStream != null) {
+            Files.copy(openVpnConfigStream, root.resolve(OpenVPNManager.OPENVPN_TAR_GZ), StandardCopyOption.REPLACE_EXISTING);
         }
     }
     

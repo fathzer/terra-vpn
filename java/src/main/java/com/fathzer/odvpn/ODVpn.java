@@ -1,6 +1,8 @@
 package com.fathzer.odvpn;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.slf4j.Logger;
@@ -45,7 +47,9 @@ public class ODVpn {
         final AbstractOnDemandVPNManager manager = getManager(name);
         logger.info("Writing configuration files to directory: {}", directory.toAbsolutePath());
 
-        manager.init(openVpnConfigPath, force);
+        try (InputStream openVpnConfigStream = openVpnConfigPath != null ? Files.newInputStream(openVpnConfigPath) : null) {
+            manager.init(openVpnConfigStream, force);
+        }
         logger.info("Finished");
     }
 

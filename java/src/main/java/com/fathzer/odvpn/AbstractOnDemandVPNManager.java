@@ -1,6 +1,9 @@
 package com.fathzer.odvpn;
 
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -144,10 +147,10 @@ public abstract class AbstractOnDemandVPNManager {
 
     /**
      * Saves the configuration in the persistent storage.
-     * @param openVpnConfigPath the path to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
+     * @param openVpnConfigStream the InputStream to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
      * @throws IOException if an I/O error occurs
      */
-    protected abstract void save(Path openVpnConfigPath) throws IOException;
+    protected abstract void save(InputStream openVpnConfigStream) throws IOException;
 
     /**
      * Deletes the configuration in the persistent storage.
@@ -157,21 +160,27 @@ public abstract class AbstractOnDemandVPNManager {
 
     /**
      * Initializes the configuration.
-     * @param openVpnConfigPath the path to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
+     * @param openVpnConfigStream the InputStream to the OpenVPN configuration file (or null if no OpenVPN configuration is provided)
      * @param force if true, the configuration file will be overwritten if it already exists and the server is not running
      * @throws IOException if an I/O error occurs
      * @throws ConfigurationException if the configuration is invalid
      * @throws IllegalStateException if the configuration file already exists and force is false or if the server is running.
      */
-    public void init(Path openVpnConfigPath, boolean force) throws IOException {
+    public void init(InputStream openVpnConfigStream, boolean force) throws IOException {
         if (exists() && !force) {
             throw new IllegalStateException("Configuration file already exists");
         } else {
             if (isServerRunning()) {
                 throw new IllegalStateException("Can't change configuration of a running server");
             } else {
-                checkConfiguration(openVpnConfigPath);
-                save(openVpnConfigPath);
+                if (openVpnConfigStream != null) {
+                    byte[] buffer = openVpnConfigStream.readAllBytes();
+                    checkConfiguration(new ByteArrayInputStream(buffer));
+                    save(new ByteArrayInputStream(buffer));
+                } else {
+                    checkConfiguration(null);
+                    save(null);
+                }
             }
         }
     }
@@ -187,23 +196,31 @@ public abstract class AbstractOnDemandVPNManager {
      */
     protected abstract Path getSSHPrivateKeyPath();
 
-    private void checkConfiguration(Path openVpnConfigPath) throws IOException {
+    /**
+     * Checks the configuration for errors.
+     * @param openVpnConfigStream the InputStream to the OpenVPN configuration file (or null to use the stored config)
+     * @throws IOException if an I/O error occurs
+     * @throws ConfigurationException if the configuration is invalid
+     */
+    private void checkConfiguration(InputStream openVpnConfigStream) throws IOException {
         // First check the vps configuration
         final List<String> errors = new LinkedList<>();
         errors.addAll(config.vps().checkConfiguration());
         // Then check the ddns configuration
         errors.addAll(config.ddns().checkConfiguration(config.vpn().hostname()));
         // Finally, check the openVpnConfiguration
-        if (openVpnConfigPath == null) {
-            openVpnConfigPath = getOpenVPNConfigPath();
-        }
-        if (Files.exists(openVpnConfigPath)) {
-            errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigPath));
+        if (openVpnConfigStream == null) {
+            Path openVpnConfigPath = getOpenVPNConfigPath();
+            if (Files.exists(openVpnConfigPath)) {
+                errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigPath));
+            }
+        } else {
+            errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigStream));
         }
         if (!errors.isEmpty()) {
             throw new ConfigurationException(errors);
         }
-    }
+    }   
 
     /** Starts the VPN server
      * @param progressListener the progress listener to notify of the progress

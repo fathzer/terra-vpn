@@ -19,8 +19,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import org.springframework.http.HttpHeaders;
@@ -69,9 +67,8 @@ public class VpnController {
             @Parameter(description = "Optional tar.gz file containing additional configuration")
             MultipartFile file) throws IOException {
         final boolean exists = service.exists(id);
-        Path tempFile;
         if (file == null || file.isEmpty()) {
-            tempFile = null;
+            service.create(id, vpnDto, null, true);
         } else {
             String contentType = file.getContentType();
             String originalFilename = file.getOriginalFilename();
@@ -81,15 +78,7 @@ public class VpnController {
             if (!isValidContentType && !isValidExtension) {
                 throw new VpnException(HttpStatus.BAD_REQUEST, "Uploaded file must be a tar.gz file");
             }
-            tempFile = Files.createTempFile("openvpn", ".tar.gz");
-            file.transferTo(tempFile);
-        }
-        try {
-            service.create(id, vpnDto, tempFile, true);
-        } finally {
-            if (tempFile != null) {
-                Files.delete(tempFile);
-            }
+            service.create(id, vpnDto, file.getInputStream(), true);
         }
         return exists ? ResponseEntity.ok().build() : ResponseEntity.created(linkTo(methodOn(VpnController.class).getVpn(id)).toUri()).build();
     }
