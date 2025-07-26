@@ -207,7 +207,9 @@ public class OpenVPNManager implements AutoCloseable {
     }
 
     protected void doSSHCommand(Ssh ssh, String command) throws IOException {
-        logger.debug("Executing command: {}", command);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Executing command: {}", command.replaceAll("[\n\r]", "_"));
+        }
 //        int code = ssh.exec(command, new LoggerOutputStream(logger, LogLevel.DEBUG), new LoggerOutputStream(logger, LogLevel.DEBUG));
         int code = ssh.exec(command, OutputStream.nullOutputStream(), OutputStream.nullOutputStream());
         logger.debug("Command finished with exit code: {}", code);
