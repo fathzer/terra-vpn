@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
+import com.jayway.jsonpath.JsonPath;
+import java.util.List;
 
 class HetznerClientTest extends VPSProviderClientTestBase {
     private static final String API_URL = "https://api.hetzner.cloud/v1/";
@@ -34,11 +36,14 @@ class HetznerClientTest extends VPSProviderClientTestBase {
         String serverUri = API_URL + "servers";
         String serverResponse = "{\"server\": {\"id\": \"server-id\"}}";
         setupMockResponse(serverUri, "POST", serverResponse, body -> {
-            assertTrue(body.contains("\"name\":\"test-server\""), "Server name is missing from JSON");
-            assertTrue(body.contains("\"location\":\"fsn1\""), "Location is missing from JSON");
-            assertTrue(body.contains("\"server_type\":\"cx11\""), "Server type is missing from JSON");
-            assertTrue(body.contains("\"ssh_keys\":[\"12345\"]"), "SSH key is missing from JSON");
-            assertTrue(body.contains("\"labels\":{\"application\":\"On-Demand-VPN\"}"), "Labels are missing from JSON");
+            assertEquals("test-server", JsonPath.read(body, "$.name"), "Server name is missing or incorrect");
+            assertEquals("fsn1", JsonPath.read(body, "$.location"), "Location is missing or incorrect");
+            assertEquals("cx11", JsonPath.read(body, "$.server_type"), "Server type is missing or incorrect");
+            List<String> sshKeys = JsonPath.read(body, "$.ssh_keys[*]");
+            assertTrue(sshKeys.contains("12345"), "SSH key is missing from JSON");
+            // Check labels
+            String label = JsonPath.read(body, "$.labels.application");
+            assertEquals("On-Demand-VPN", label, "Labels are missing or incorrect");
         });
 
         String result = client.create(settings, vpnConfig);

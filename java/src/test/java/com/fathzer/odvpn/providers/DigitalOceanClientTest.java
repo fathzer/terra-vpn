@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
+import com.jayway.jsonpath.JsonPath;
+import java.util.List;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
 
@@ -63,20 +65,25 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         String dropletUri = API_URL + "droplets";
         String dropletResponse = "{\"droplet\": {\"id\": \"droplet-id\"}}";
         setupMockResponse(dropletUri, "POST", dropletResponse, body -> {
-            assertTrue(body.contains("\"name\":\"test-droplet\""), "Droplet name is missing from JSON");
-            assertTrue(body.contains("\"region\":\"nyc1\""), "Region is missing from JSON");
-            assertTrue(body.contains("\"size\":\"s-1vcpu-1gb\""), "Size is missing from JSON");
-            assertTrue(body.contains("\"ssh_keys\":[\"12345\"]"), "SSH key is missing from JSON");            
+            assertEquals("test-droplet", JsonPath.read(body, "$.name"), "Droplet name is missing or incorrect");
+            assertEquals("nyc1", JsonPath.read(body, "$.region"), "Region is missing or incorrect");
+            assertEquals("s-1vcpu-1gb", JsonPath.read(body, "$.size"), "Size is missing or incorrect");
+            List<String> sshKeys = JsonPath.read(body, "$.ssh_keys[*]");
+            assertTrue(sshKeys.contains("12345"), "SSH key is missing from JSON");
         });
 
         // Mock POST firewall creation
         String firewallUri = API_URL + "firewalls";
         String firewallResponse = "{\"firewall\": {\"id\": \"firewall-id\"}}";
         setupMockResponse(firewallUri, "POST", firewallResponse, body -> {
-            assertTrue(body.contains("\"protocol\":\"udp\""), "UDP rule is missing from JSON");
-            assertTrue(body.contains("\"ports\":\"1194\""), "UDP port 1194 is missing from JSON");
-            assertTrue(body.contains("\"protocol\":\"tcp\""), "TCP rule is missing from JSON");
-            assertTrue(body.contains("\"ports\":\"22\""), "TCP port 22 is missing from JSON");
+            // Check that at least one UDP rule for port 1194 exists
+            List<String> protocols = JsonPath.read(body, "$.inbound_rules[*].protocol");
+            List<String> ports = JsonPath.read(body, "$.inbound_rules[*].ports");
+            assertTrue(protocols.contains("udp"), "UDP rule is missing from JSON");
+            assertTrue(ports.contains("1194"), "UDP port 1194 is missing from JSON");
+            // Check that at least one TCP rule for port 22 exists
+            assertTrue(protocols.contains("tcp"), "TCP rule is missing from JSON");
+            assertTrue(ports.contains("22"), "TCP port 22 is missing from JSON");
         });
 
         // Call the method to test

@@ -21,6 +21,7 @@ public class ListOutputStream extends OutputStream {
      * @return the collected lines
      */
     public List<String> getLines() {
+        flush();
         return Collections.unmodifiableList(lines);
     }
 
@@ -95,7 +96,7 @@ public class ListOutputStream extends OutputStream {
      */
     private void flushBuffer() {
         synchronized (buffer) {
-            if (buffer.length() > 0) {
+            if (!buffer.isEmpty()) {
                 lines.add(buffer.toString());
                 buffer.setLength(0);
             }
