@@ -116,7 +116,7 @@ class OpenVPNManagerTest {
 
     @Test
     void testStartSendsCorrectCommand() throws Exception {
-        VPNConfig config = new VPNConfig("vpn.mydomain.com", new String[]{"1.2.3.4", "8.8.8.8"}, VPNConfig.Protocol.UDP, 1194);
+        VPNConfig config = new VPNConfig("vpn.mydomain.com", new String[]{"1.2.3.4", "8.8.8.8"}, VPNConfig.Protocol.TCP, 443);
         InstanceParameters params = new InstanceParameters(new DummyVPSProvider(), new DummyDDNSProvider(), config);
         when(mockSsh.exec(any(String.class), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
         manager.start(params);
@@ -157,6 +157,17 @@ class OpenVPNManagerTest {
         // Check problems in ssh command
         when(mockSsh.exec(anyString(), any(OutputStream.class), any(OutputStream.class))).thenReturn(1);
         assertThrows(IOException.class, () -> manager.getUsers());
+    }
+
+    @Test
+    void testGetUserConfigurationFile() throws Exception {
+        String username = "alice";
+        var user = new OpenVPNManager.User(username, true, java.time.Instant.now());
+        OpenVPNManager managerSpy = spy(manager);
+        doReturn(List.of(user)).when(managerSpy).getUsers();
+        var result = managerSpy.getUserConfigurationFile(username);
+        assertNotNull(result);
+        assertThrows(OpenVPNManager.UnknownUserException.class, () -> managerSpy.getUserConfigurationFile("bob"));
     }
 
     @Test
