@@ -2,6 +2,8 @@ package com.fathzer.odvpn.json;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -17,11 +19,11 @@ public class VPNConfigDeserializer extends JsonDeserializer<VPNConfig> {
         String hostName = node.get("hostname").asText();
         
         JsonNode dnsNode = node.get("dnsServers");
-        String[] dnsServers = null;
+        List<String> dnsServers = null;
         if (dnsNode != null && dnsNode.isArray()) {
-            dnsServers = new String[dnsNode.size()];
+            dnsServers = new LinkedList<>();
             for (int i = 0; i < dnsNode.size(); i++) {
-                dnsServers[i] = dnsNode.get(i).asText();
+                dnsServers.add(dnsNode.get(i).asText());
             }
         }
         

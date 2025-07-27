@@ -8,8 +8,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -17,36 +15,8 @@ import java.util.Optional;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.repository.VPNConfig.Protocol;
 
-final class VPNConfigValidator {
-    private VPNConfigValidator() {}
-
-    // TODO Should probably be merged with (or re use) the InputStream version
-    static List<String> check(VPNConfig config, Path openvpnConfigPath) throws IOException {
-        final List<String> errors = new LinkedList<>();
-        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
-            if (!contains(is, "pki/issued/"+config.hostname()+".crt", false)) {
-                errors.add("OpenVPN configuration file does not contain the certificate for " + config.hostname());
-            }
-        }
-        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
-            if (!contains(is, "pki/private/"+config.hostname()+".key", false)) {
-                errors.add("OpenVPN configuration file does not contain the private key for " + config.hostname());
-            }
-        }
-        try (InputStream is = Files.newInputStream(openvpnConfigPath)) {
-            try (InputStream ovpnConfIs = getEntryStream(is, "openvpn.conf", false)) {
-                if (ovpnConfIs == null) {
-                    errors.add("OpenVPN configuration file does not contain openvpn.conf file");
-                } else {
-                    Protocol protocol = getProtocol(ovpnConfIs, errors);
-                    if (protocol != config.protocol()) {
-                        errors.add("OpenVPN configuration file and vpn configuration do not contain the same protocol");
-                    }
-                }
-            }
-        }
-        return errors;
-    }
+final class OpenVPNConfigValidator {
+    private OpenVPNConfigValidator() {}
 
     /**
      * Checks the OpenVPN tar.gz configuration file from an InputStream.

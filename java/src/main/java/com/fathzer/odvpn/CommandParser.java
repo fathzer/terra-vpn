@@ -89,7 +89,7 @@ class CommandParser {
         final PreParsedCommand preParsedCommand = checkCommand(args);
         if (preParsedCommand != null) {
             try {
-                final CommandLine line = new DefaultParser().parse(preParsedCommand.command().options, preParsedCommand.args());
+                final CommandLine line = new DefaultParser().parse(preParsedCommand.command().options, preParsedCommand.args().toArray(new String[0]));
                 checkArgsOrder(line, preParsedCommand.args());
                 final Command command = preParsedCommand.command();
                 command.checkArguments(line);
@@ -119,23 +119,23 @@ class CommandParser {
      * @param line the parsed command line
      * @param args the command arguments (including options)
      */
-    private void checkArgsOrder(CommandLine line, String[] args) {
+    private void checkArgsOrder(CommandLine line, List<String> args) {
         final List<String> commandArgs = line.getArgList();
         final int argCount = commandArgs.size();
-        final List<String> argsList = new LinkedList<>(Arrays.asList(args)).subList(args.length-argCount, args.length);
+        final List<String> argsList = new LinkedList<>(args).subList(args.size()-argCount, args.size());
         if (!commandArgs.equals(argsList)) {
             throw new IllegalArgumentException("Arguments must be at the end of the command");
         }
     }
 
-    private static record PreParsedCommand(Command command, String[] args) {
+    private static record PreParsedCommand(Command command, List<String> args) {
     }
 
     private PreParsedCommand checkCommand(String[] args) {
         if (args.length > 0) {
             final Command command = Command.fromName(args[0]);
             if (command != null) {
-                return new PreParsedCommand(command, Arrays.copyOfRange(args, 1, args.length));
+                return new PreParsedCommand(command, new LinkedList<>(Arrays.asList(args)).subList(1, args.length));
             }
         }
         if (!silent) {

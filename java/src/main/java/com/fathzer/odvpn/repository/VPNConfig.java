@@ -1,5 +1,7 @@
 package com.fathzer.odvpn.repository;
 
+import java.util.List;
+
 import com.fathzer.odvpn.utils.DnsNameValidator;
 import com.fathzer.odvpn.utils.IPv4Validator;
 
@@ -12,7 +14,7 @@ import com.fathzer.odvpn.utils.IPv4Validator;
  * @param port the port number to connect to (0 means use default port 1194)
  * @throws IllegalArgumentException if any of the parameters are invalid
  */
-public record VPNConfig(String hostname, String[] dnsServers, Protocol protocol, int port) {
+public record VPNConfig(String hostname, List<String> dnsServers, Protocol protocol, int port) {
     /**
      * Transport protocol for the VPN connection.
      */
@@ -53,7 +55,7 @@ public record VPNConfig(String hostname, String[] dnsServers, Protocol protocol,
         
         // Validate DNS servers
         if (dnsServers != null) {
-            if (dnsServers.length!=0 && (dnsServers.length < 2 || dnsServers.length > 4)) {
+            if (!dnsServers.isEmpty() && (dnsServers.size() < 2 || dnsServers.size() > 4)) {
                 throw new IllegalArgumentException("DNS servers array must be empty or have between 2 and 4 elements");
             }
             for (String dns : dnsServers) {

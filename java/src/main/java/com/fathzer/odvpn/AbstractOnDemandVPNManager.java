@@ -212,10 +212,12 @@ public abstract class AbstractOnDemandVPNManager {
         if (openVpnConfigStream == null) {
             Path openVpnConfigPath = getOpenVPNConfigPath();
             if (Files.exists(openVpnConfigPath)) {
-                errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigPath));
+                try (InputStream is = Files.newInputStream(openVpnConfigPath)) {
+                    errors.addAll(OpenVPNConfigValidator.check(config.vpn(), is));
+                }
             }
         } else {
-            errors.addAll(VPNConfigValidator.check(config.vpn(), openVpnConfigStream));
+            errors.addAll(OpenVPNConfigValidator.check(config.vpn(), openVpnConfigStream));
         }
         if (!errors.isEmpty()) {
             throw new ConfigurationException(errors);

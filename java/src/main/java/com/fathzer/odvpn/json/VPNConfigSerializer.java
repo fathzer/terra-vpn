@@ -14,7 +14,7 @@ public class VPNConfigSerializer extends JsonSerializer<VPNConfig> {
         gen.writeStartObject();
         gen.writeStringField("hostname", value.hostname());
         
-        if (value.dnsServers() != null && value.dnsServers().length > 0) {
+        if (value.dnsServers() != null && !value.dnsServers().isEmpty()) {
             gen.writeArrayFieldStart("dnsServers");
             for (String dns : value.dnsServers()) {
                 gen.writeString(dns);
