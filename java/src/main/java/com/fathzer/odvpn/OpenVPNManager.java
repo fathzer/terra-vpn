@@ -107,7 +107,7 @@ public class OpenVPNManager implements AutoCloseable {
 
     private String getInitOpenVPNCommand(InstanceParameters config) {
         final StringBuilder command = new StringBuilder("docker run -v ").append(OPENVPN_VPS_FOLDER).append(":/etc/openvpn --rm ").append(OPENVPN_IMAGE).append(" ovpn_genconfig");
-        if (config.vpn().dnsServers()!=null && config.vpn().dnsServers().length>0) {
+        if (config.vpn().dnsServers()!=null && !config.vpn().dnsServers().isEmpty()) {
             command.append(" -p 'block-outside-dns'");
             for (String dns : config.vpn().dnsServers()) {
                 command.append(" -p 'dhcp-option DNS ").append(dns).append("'");

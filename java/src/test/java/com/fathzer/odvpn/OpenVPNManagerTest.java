@@ -90,7 +90,7 @@ class OpenVPNManagerTest {
 
     @Test
     void testInitRemoteSendsCorrectCommands() throws Exception {
-        VPNConfig config = new VPNConfig("vpn.mydomain.com", new String[]{"1.2.3.4", "8.8.8.8"}, VPNConfig.Protocol.UDP, 1194);
+        VPNConfig config = new VPNConfig("vpn.mydomain.com", List.of("1.2.3.4", "8.8.8.8"), VPNConfig.Protocol.UDP, 1194);
         InstanceParameters params = new InstanceParameters(new DummyVPSProvider(), new DummyDDNSProvider(), config);
         when(mockSsh.exec(any(String.class), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
         when(mockSsh.exec(anyList(), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
@@ -116,7 +116,7 @@ class OpenVPNManagerTest {
 
     @Test
     void testStartSendsCorrectCommand() throws Exception {
-        VPNConfig config = new VPNConfig("vpn.mydomain.com", new String[]{"1.2.3.4", "8.8.8.8"}, VPNConfig.Protocol.TCP, 443);
+        VPNConfig config = new VPNConfig("vpn.mydomain.com", List.of("1.2.3.4", "8.8.8.8"), VPNConfig.Protocol.TCP, 443);
         InstanceParameters params = new InstanceParameters(new DummyVPSProvider(), new DummyDDNSProvider(), config);
         when(mockSsh.exec(any(String.class), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
         manager.start(params);
