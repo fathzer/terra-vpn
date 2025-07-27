@@ -146,7 +146,7 @@ public class VpnController {
                        @ApiResponse(responseCode = "404", description = VPN_NOT_FOUND, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class))),
                        @ApiResponse(responseCode = "425", description = CONFLICT, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorObject.class)))
                    })
-    public ResponseEntity<Void> startVpn(@PathVariable String id) throws IOException {
+    public ResponseEntity<Void> startVpn(@PathVariable String id) {
         service.start(id);
         return ResponseEntity.accepted().header(HttpHeaders.LOCATION, "/vpns/" + id + "/status").build();
     }

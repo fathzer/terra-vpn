@@ -18,7 +18,7 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
     private final Path root;
     private final Path sshPrivateKey;
 
-    public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, String id, InstanceParameters config) throws IOException {
+    public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, String id, InstanceParameters config) {
         super(id, config);
         if (settings == null) {
             throw new IllegalArgumentException("settings cannot be null");
