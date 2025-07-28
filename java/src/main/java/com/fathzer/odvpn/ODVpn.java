@@ -14,7 +14,7 @@ import com.fathzer.odvpn.repository.VPNRepositorySettings;
 import com.fathzer.odvpn.utils.IOLambdas.IORunnable;
 import com.fathzer.odvpn.ws.ODVpnApplication;
 
-public class ODVpn {
+public class ODVpn implements CommandParser.ODVpnCommands {
     private static final Logger logger = LoggerFactory.getLogger(ODVpn.class);
 
     public static void main(String[] args) throws IOException {
@@ -30,11 +30,13 @@ public class ODVpn {
 
     private VPNRepositorySettings settings;
 
-    void web() {
+    @Override
+    public void web() {
         ODVpnApplication.main(new String[0]);
     }
 
-    void init(final String name, final Path configPath, final Path openVpnConfigPath, final boolean force) throws IOException {
+    @Override
+    public void init(final String name, final Path configPath, final Path openVpnConfigPath, final boolean force) throws IOException {
         logger.info("Configuration file: {}", configPath.toAbsolutePath());
         final InstanceParameters config = InstanceParametersParser.parse(configPath);
         
@@ -57,15 +59,18 @@ public class ODVpn {
         return new LocalDiskOnDemandVPNManager(settings, name);
     }
 
-    void start(final String name) throws IOException {
+    @Override
+    public void start(final String name) throws IOException {
         getManager(name).start(new MyStartProgressListener());
     }
 
-    void stop(final String name) throws IOException {
+    @Override
+    public void stop(final String name) throws IOException {
         getManager(name).stop();
     }
 
-    void delete(final String name, final boolean force) throws IOException {
+    @Override
+    public void delete(final String name, final boolean force) throws IOException {
         getManager(name).delete(force);
     }
 

@@ -36,7 +36,7 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
      * @return The id of the SSH key if the key exists exactly once
      * @throws IOException if an I/O error occurs
      * @throws IllegalArgumentException if the key is unknown or duplicated
-     * @see #getSSHKeyId(String, Class, Function)
+     * @see #getSSHKeyId(String, IOFunction)
      */
     public String getSSHKeyId(String keyName) throws IOException {
         return this.getSSHKeyId(keyName, r -> this.objectMapper.readValue(r, SshKeysResponse.class).sshKeys());

@@ -1,5 +1,6 @@
 package com.fathzer.odvpn;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,12 +23,20 @@ class CommandParser {
     private static final String OPT_FORCE = "f";
     private static final String OPT_FORCE_LONG = "force";
 
+    interface ODVpnCommands {
+        void web();
+        void init(String name, Path configPath, Path openVpnConfigPath, boolean force) throws IOException;
+        void start(String name) throws IOException;
+        void stop(String name) throws IOException;
+        void delete(String name, boolean force) throws IOException;
+    }
+
     enum Command {
-        WEB("web", "Launch the web application", "", new Options(), (o, l) -> o.web()),
-        INIT("init", "Initialize a new VPN server configuration", "name configFile [openVPNConfigFile]", getInitOptions(), (o, l) -> o.init(l.getArgList().get(0), Path.of(l.getArgList().get(1)), l.getArgList().size() > 2 ? Path.of(l.getArgList().get(2)) : null, l.hasOption(OPT_FORCE))),
-        START("start", "Start the VPN server", "name", new Options(), (o, l) -> o.start(l.getArgList().get(0))),
-        STOP("stop", "Stop the VPN server", "name", new Options(), (o, l) -> o.stop(l.getArgList().get(0))),
-        DELETE("delete", "Delete the VPN server configuration", "name", getDeleteOptions(), (o, l) -> o.delete(l.getArgList().get(0), l.hasOption(OPT_FORCE)));
+        WEB("web", "Launch the web application", "", new Options(), (ODVpnCommands o, CommandLine l) -> o.web()),
+        INIT("init", "Initialize a new VPN server configuration", "name configFile [openVPNConfigFile]", getInitOptions(), (ODVpnCommands o, CommandLine l) -> o.init(l.getArgList().get(0), Path.of(l.getArgList().get(1)), l.getArgList().size() > 2 ? Path.of(l.getArgList().get(2)) : null, l.hasOption(OPT_FORCE))),
+        START("start", "Start the VPN server", "name", new Options(), (ODVpnCommands o, CommandLine l) -> o.start(l.getArgList().get(0))),
+        STOP("stop", "Stop the VPN server", "name", new Options(), (ODVpnCommands o, CommandLine l) -> o.stop(l.getArgList().get(0))),
+        DELETE("delete", "Delete the VPN server configuration", "name", getDeleteOptions(), (ODVpnCommands o, CommandLine l) -> o.delete(l.getArgList().get(0), l.hasOption(OPT_FORCE)));
 
         private static final Map<String, Command> COMMANDS = new HashMap<>();
         static {
@@ -39,9 +48,9 @@ class CommandParser {
         private final String description;
         private final String argsDescription;
         private final Options options;
-        private final IOBiConsumer<ODVpn, CommandLine> action;
+        private final IOBiConsumer<ODVpnCommands, CommandLine> action;
 
-        private Command(String name, String description, String argsDescription, Options options, IOBiConsumer<ODVpn, CommandLine> action) {
+        private Command(String name, String description, String argsDescription, Options options, IOBiConsumer<ODVpnCommands, CommandLine> action) {
             this.name = name;
             this.description = description;
             this.argsDescription = argsDescription;
@@ -85,7 +94,7 @@ class CommandParser {
 
     private boolean silent;
 
-    IOLambdas.IORunnable parse(String[] args, ODVpn odvpn) {
+    IOLambdas.IORunnable parse(String[] args, ODVpnCommands odvpn) {
         final PreParsedCommand preParsedCommand = checkCommand(args);
         if (preParsedCommand != null) {
             try {

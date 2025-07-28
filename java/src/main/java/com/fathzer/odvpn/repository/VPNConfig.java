@@ -8,11 +8,10 @@ import com.fathzer.odvpn.utils.IPv4Validator;
 /**
  * Represents the configuration for a VPN connection.
  * 
- * @param hostName the hostname or IP address of the VPN server (cannot be null, empty, or an IP address)
+ * @param hostname the host name or IP address of the VPN server (cannot be null, empty, or an IP address)
  * @param dnsServers an array of DNS server IP addresses to be used with the VPN (can be null or empty, if notshould have between 2 and 4 elements)
  * @param protocol the transport protocol to use (UDP or TCP)
  * @param port the port number to connect to (0 means use default port 1194)
- * @throws IllegalArgumentException if any of the parameters are invalid
  */
 public record VPNConfig(String hostname, List<String> dnsServers, Protocol protocol, int port) {
     /**
@@ -25,15 +24,9 @@ public record VPNConfig(String hostname, List<String> dnsServers, Protocol proto
         TCP;
     }
 
-    /**
-     * Validates and creates a new VPN configuration.
-     * 
-     * @param hostName the hostname of the VPN server (cannot be null, empty, or an IP address)
-     * @param dnsServers an array of DNS server IP addresses (can be null, should have between 2 and 4 elements)
-     * @param protocol the transport protocol to use (if null, defaults to UDP)
-     * @param port the port number (if 0, defaults to 1194; must be between 0 and 65535)
-     * @throws IllegalArgumentException if any parameter is invalid
-     */
+    /** Check arguments
+      * @throws IllegalArgumentException if any of the parameters are invalid
+      */
     public VPNConfig {
         if (hostname == null) {
             throw new IllegalArgumentException("Host name cannot be null");

@@ -47,7 +47,7 @@ public abstract class DynamicDNSProvider<T> extends Provider<T> {
 
     /**
      * Sends a request to the DDNS provider.
-     * <br>This is a utility method that can be used by the implementation of the {@link #updateDns(Map<String, String>, String hostName, String ip)} method.
+     * <br>This is a utility method that can be used by the implementation of the {@link #updateDns(String hostName, String ip)} method.
      * It simply sends the request through a new {@link HttpClient} and returns the response after closing the client.
      * @param request the request
      * @return the response
