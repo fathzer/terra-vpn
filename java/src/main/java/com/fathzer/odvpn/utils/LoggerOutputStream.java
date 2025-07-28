@@ -2,18 +2,12 @@ package com.fathzer.odvpn.utils;
 
 import org.slf4j.Logger;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-
 /**
  * An OutputStream that writes to an SLF4J Logger at a specified log level.
  */
-public class LoggerOutputStream extends OutputStream {
+public class LoggerOutputStream extends AbstractLineBasedOutputStream {
     private final Logger logger;
     private final LogLevel level;
-    private final StringBuilder buffer;
-    private static final int BUFFER_SIZE = 1024;
 
     /**
      * Available log levels.
@@ -38,80 +32,33 @@ public class LoggerOutputStream extends OutputStream {
         }
         this.logger = logger;
         this.level = level;
-        this.buffer = new StringBuilder(BUFFER_SIZE);
     }
 
     @Override
-    public void write(int b) throws IOException {
-        // Convert byte to char and add to buffer
-        char c = (char) (b & 0xFF);
-        
-        // Check for newline or buffer full
-        if (c == '\n' || buffer.length() >= BUFFER_SIZE) {
-            flush();
-        } else if (c != '\r') {  // Ignore carriage return
-            buffer.append(c);
-        }
+    protected void synchronizedClear() {
+        // No additional actions should be done to clear the logger
     }
 
     @Override
-    public void write(byte[] b, int off, int len) throws IOException {
-        if (b == null) {
-            throw new NullPointerException();
-        } else if ((off < 0) || (off > b.length) || (len < 0) ||
-                ((off + len) > b.length) || ((off + len) < 0)) {
-            throw new IndexOutOfBoundsException();
-        } else if (len == 0) {
-            return;
-        }
+    protected void synchronizedFlush() {
+        final String message = buffer.toString();
         
-        String str = new String(b, off, len, StandardCharsets.UTF_8);
-        int lastNewline = 0;
-        int i;
-        
-        // Process each line in the input
-        for (i = 0; i < str.length(); i++) {
-            if (str.charAt(i) == '\n') {
-                buffer.append(str, lastNewline, i);
-                flush();
-                lastNewline = i + 1;
-            }
+        switch (level) {
+            case TRACE:
+                logger.trace(message);
+                break;
+            case DEBUG:
+                logger.debug(message);
+                break;
+            case INFO:
+                logger.info(message);
+                break;
+            case WARN:
+                logger.warn(message);
+                break;
+            case ERROR:
+                logger.error(message);
+                break;
         }
-        
-        // Add remaining characters to buffer (no newline at end)
-        if (lastNewline < i) {
-            buffer.append(str, lastNewline, i);
-        }
-    }
-
-    @Override
-    public void flush() {
-        if (buffer.length() > 0) {
-            String message = buffer.toString();
-            buffer.setLength(0);
-            
-            switch (level) {
-                case TRACE:
-                    logger.trace(message);
-                    break;
-                case DEBUG:
-                    logger.debug(message);
-                    break;
-                case INFO:
-                    logger.info(message);
-                    break;
-                case WARN:
-                    logger.warn(message);
-                    break;
-                case ERROR:
-                    logger.error(message);
-                    break;
-            }
-        }
-    }
-
-    @Override
-    public void close() {
-        flush();
     }
 }
