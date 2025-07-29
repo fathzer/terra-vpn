@@ -29,8 +29,10 @@ public class OpenVPNManager implements AutoCloseable {
     static final String OPENVPN_IMAGE = "kylemanna/openvpn";
     /** The OpenVPN configuration folder on the VPS */
     static final String OPENVPN_VPS_FOLDER = "/etc/openvpn";
-
     static final String OPENVPN_TAR_GZ = "openvpn.tar.gz";
+    
+    private static final String OPENVPN_DOCKER_COMMAND_FORMAT = "docker run -v "+OPENVPN_VPS_FOLDER+":/etc/openvpn %s"+OPENVPN_IMAGE+"%s";
+    private static final String OPENVPN_RM_DOCKER_COMMAND_FORMAT = String.format(OPENVPN_DOCKER_COMMAND_FORMAT,"--rm %s", " %s");
 
     private final Ssh ssh;
 
@@ -92,6 +94,7 @@ public class OpenVPNManager implements AutoCloseable {
         ssh.exec(commands, System.out, System.err);
     }
 
+
     /** Initializes the remote openvpn config
      * <br>Note: does not start the server nor perform any backup
      * @throws IOException if an error occurs
@@ -101,12 +104,12 @@ public class OpenVPNManager implements AutoCloseable {
         doSSHCommand(ssh, "sudo rm -rf " + OPENVPN_VPS_FOLDER);
         String initOpenVPNCommand = getInitOpenVPNCommand(config);
         doSSHCommand(ssh, initOpenVPNCommand);
-        final String initPKICommand = "echo 'yes' | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_initpki nopass";
+        final String initPKICommand = "echo 'yes' | " + String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ","ovpn_initpki nopass");
         doSSHCommand(ssh, initPKICommand);
     }
 
     private String getInitOpenVPNCommand(InstanceParameters config) {
-        final StringBuilder command = new StringBuilder("docker run -v ").append(OPENVPN_VPS_FOLDER).append(":/etc/openvpn --rm ").append(OPENVPN_IMAGE).append(" ovpn_genconfig");
+        final StringBuilder command = new StringBuilder(String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"","ovpn_genconfig"));
         if (config.vpn().dnsServers()!=null && !config.vpn().dnsServers().isEmpty()) {
             command.append(" -p 'block-outside-dns'");
             for (String dns : config.vpn().dnsServers()) {
@@ -124,8 +127,9 @@ public class OpenVPNManager implements AutoCloseable {
         // First stop the server if it is running
         final String stopServerCommand = "docker rm -f openvpn || true";
         doSSHCommand(ssh, stopServerCommand);
-        final String launchServerCommandFormat = "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s";
-        final String launchServerCommand = String.format(launchServerCommandFormat, OPENVPN_VPS_FOLDER, config.vpn().port(), "1194/"+config.vpn().protocol(), OPENVPN_IMAGE);
+        System.out.println (OPENVPN_DOCKER_COMMAND_FORMAT); //TODO
+        final String launchServerCommandFormat = String.format(OPENVPN_DOCKER_COMMAND_FORMAT,"-d --name openvpn --restart unless-stopped -p %s:%s --cap-add=NET_ADMIN ", "");
+        final String launchServerCommand = String.format(launchServerCommandFormat, config.vpn().port(), "1194/"+config.vpn().protocol());
         logger.debug("Starting openvpn server with command {}", launchServerCommand);
         doSSHCommand(ssh, launchServerCommand);
         logger.debug("Openvpn server is started");
@@ -139,7 +143,7 @@ public class OpenVPNManager implements AutoCloseable {
     */
     public List<User> getUsers() throws IOException {
         try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
-            int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_listclients", outputStream, errorStream);
+            int code = ssh.exec(String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"","ovpn_listclients"), outputStream, errorStream);
             if (code != 0) {
                 throw new IOException("Failed to list users with exit code " + code);
             }
@@ -166,7 +170,7 @@ public class OpenVPNManager implements AutoCloseable {
         if (users.stream().anyMatch(user -> user.name().equals(name) && user.valid())) {
             throw new UserAlreadyExistsException(name);
         }
-        doSSHCommand(ssh, "docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " easyrsa build-client-full " + name + " nopass");
+        doSSHCommand(ssh, String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ","easyrsa build-client-full " + name + " nopass"));
     }
 
     /** Deletes a user from the remote openvpn server
@@ -180,7 +184,7 @@ public class OpenVPNManager implements AutoCloseable {
         if (user.isEmpty()) {
             throw new UnknownUserException(name);
         }
-        doSSHCommand(ssh, "echo yes | docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OPENVPN_IMAGE + " ovpn_revokeclient " + name);
+        doSSHCommand(ssh, "echo yes | "+String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ","ovpn_revokeclient " + name));
     }
 
     /** Gets the remote openvpn server configuration file for the given user
@@ -193,7 +197,7 @@ public class OpenVPNManager implements AutoCloseable {
             throw new UnknownUserException(name);
         }
         try (ListOutputStream outputStream = new ListOutputStream(); ListOutputStream errorStream = new ListOutputStream()) {
-            int code = ssh.exec("docker run -v " + OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm kylemanna/openvpn ovpn_getclient " + name, outputStream, errorStream);
+            int code = ssh.exec(String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"","ovpn_getclient " + name), outputStream, errorStream);
             if (code != 0) {
                 throw new IOException("Failed to get user configuration file for " + name+" with exit code " + code);
             }

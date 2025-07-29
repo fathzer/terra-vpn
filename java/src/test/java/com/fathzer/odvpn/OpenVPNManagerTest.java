@@ -121,7 +121,7 @@ class OpenVPNManagerTest {
         when(mockSsh.exec(any(String.class), any(OutputStream.class), any(OutputStream.class))).thenReturn(0);
         manager.start(params);
         String expectedCommand = String.format(
-            "docker run -d --name openvpn --restart unless-stopped -v %s:/etc/openvpn -p %s:%s --cap-add=NET_ADMIN %s",
+            "docker run -v %s:/etc/openvpn -d --name openvpn --restart unless-stopped -p %s:%s --cap-add=NET_ADMIN %s",
             OpenVPNManager.OPENVPN_VPS_FOLDER,
             config.port(),
             "1194/" + config.protocol(),
