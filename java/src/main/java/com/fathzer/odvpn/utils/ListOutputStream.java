@@ -21,12 +21,12 @@ public class ListOutputStream extends AbstractLineBasedOutputStream {
     }
 
     @Override
-    protected void synchronizedFlush() {
+    protected void doFlush() {
         lines.add(buffer.toString());
     }
 
     @Override
-    protected void synchronizedClear() {
+    protected void doClear() {
         lines.clear();
     }
 }

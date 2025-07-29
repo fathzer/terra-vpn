@@ -35,12 +35,7 @@ public class LoggerOutputStream extends AbstractLineBasedOutputStream {
     }
 
     @Override
-    protected void synchronizedClear() {
-        // No additional actions should be done to clear the logger
-    }
-
-    @Override
-    protected void synchronizedFlush() {
+    protected void doFlush() {
         final String message = buffer.toString();
         
         switch (level) {

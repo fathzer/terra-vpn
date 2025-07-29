@@ -1,13 +1,14 @@
 package com.fathzer.odvpn.ssh;
 
 import java.io.OutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fathzer.odvpn.utils.AbstractLineBasedOutputStream;
 
 /**
  * Runs a script on a remote server and provides progress updates.
@@ -18,10 +19,9 @@ public class ScriptRunner {
     private final Ssh baseExecutor;
     private final String startMarker;
 
-    class ProgressAwareOutputStream extends OutputStream {
+    class ProgressAwareOutputStream extends AbstractLineBasedOutputStream {
         private final OutputStream delegate;
         private final Consumer<Integer> callback;
-        private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
         public ProgressAwareOutputStream(OutputStream delegate, Consumer<Integer> callback) {
             this.delegate = delegate;
@@ -29,22 +29,17 @@ public class ScriptRunner {
         }
 
         @Override
-        public void write(int b) throws IOException {
-            buffer.write(b);
-            if (b == '\n') {
-                flushBuffer();
+        protected void doFlush() {
+            flushBuffer();
+            try {
+                delegate.flush();
+            } catch (IOException e) {
+                LOGGER.warn("Failed to flush delegate", e);
             }
         }
 
-        @Override
-        public void flush() throws IOException {
-            flushBuffer();
-            delegate.flush();
-        }
-
-        private void flushBuffer() throws IOException {
-            String line = buffer.toString();
-            buffer.reset();
+        private void flushBuffer() {
+            final String line = buffer.toString();
             if (line.startsWith(startMarker)) {
                 try {
                     int step = Integer.parseInt(line.substring(startMarker.length()).trim());
@@ -53,14 +48,24 @@ public class ScriptRunner {
                     LOGGER.warn("Failed to parse progress marker: {}", line);
                 }
             } else {
-                delegate.write(line.getBytes());
+                try {
+                    delegate.write(line.getBytes());
+                    delegate.write('\n');
+                    delegate.flush();
+                } catch (IOException e) {
+                    LOGGER.warn("Failed to write delegate", e);
+                }
             }
         }
 
         @Override
-        public void close() throws IOException {
-            flushBuffer();
-            delegate.close();
+        public void close() {
+            super.close();
+            try {
+                delegate.close();
+            } catch (IOException e) {
+                LOGGER.warn("Failed to close delegate", e);
+            }
         }
     }
 
