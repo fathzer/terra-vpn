@@ -33,6 +33,7 @@ public class OpenVPNManager implements AutoCloseable {
     
     private static final String OPENVPN_DOCKER_COMMAND_FORMAT = "docker run -v "+OPENVPN_VPS_FOLDER+":/etc/openvpn %s"+OPENVPN_IMAGE+"%s";
     private static final String OPENVPN_RM_DOCKER_COMMAND_FORMAT = String.format(OPENVPN_DOCKER_COMMAND_FORMAT,"--rm %s", " %s");
+    private static final String OPENVPN_RM_INTERACTIVE_DOCKER_COMMAND_FORMAT = "echo 'yes' | " + String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ", "%s");
 
     private final Ssh ssh;
 
@@ -104,8 +105,7 @@ public class OpenVPNManager implements AutoCloseable {
         doSSHCommand(ssh, "sudo rm -rf " + OPENVPN_VPS_FOLDER);
         String initOpenVPNCommand = getInitOpenVPNCommand(config);
         doSSHCommand(ssh, initOpenVPNCommand);
-        final String initPKICommand = "echo 'yes' | " + String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ","ovpn_initpki nopass");
-        doSSHCommand(ssh, initPKICommand);
+        doSSHCommand(ssh, String.format(OPENVPN_RM_INTERACTIVE_DOCKER_COMMAND_FORMAT, "ovpn_initpki nopass"));
     }
 
     private String getInitOpenVPNCommand(InstanceParameters config) {
@@ -127,7 +127,6 @@ public class OpenVPNManager implements AutoCloseable {
         // First stop the server if it is running
         final String stopServerCommand = "docker rm -f openvpn || true";
         doSSHCommand(ssh, stopServerCommand);
-        System.out.println (OPENVPN_DOCKER_COMMAND_FORMAT); //TODO
         final String launchServerCommandFormat = String.format(OPENVPN_DOCKER_COMMAND_FORMAT,"-d --name openvpn --restart unless-stopped -p %s:%s --cap-add=NET_ADMIN ", "");
         final String launchServerCommand = String.format(launchServerCommandFormat, config.vpn().port(), "1194/"+config.vpn().protocol());
         logger.debug("Starting openvpn server with command {}", launchServerCommand);
@@ -184,7 +183,7 @@ public class OpenVPNManager implements AutoCloseable {
         if (user.isEmpty()) {
             throw new UnknownUserException(name);
         }
-        doSSHCommand(ssh, "echo yes | "+String.format(OPENVPN_RM_DOCKER_COMMAND_FORMAT,"-i ","ovpn_revokeclient " + name));
+        doSSHCommand(ssh, String.format(OPENVPN_RM_INTERACTIVE_DOCKER_COMMAND_FORMAT, "ovpn_revokeclient " + name));
     }
 
     /** Gets the remote openvpn server configuration file for the given user

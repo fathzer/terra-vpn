@@ -177,7 +177,7 @@ class OpenVPNManagerTest {
         OpenVPNManager managerSpy = spy(manager);
         doReturn(List.of(user)).when(managerSpy).getUsers();
         managerSpy.deleteUser("bar");
-        verify(mockSsh).exec(eq("echo yes | docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OpenVPNManager.OPENVPN_IMAGE + " ovpn_revokeclient bar"), any(OutputStream.class), any(OutputStream.class));
+        verify(mockSsh).exec(eq("echo 'yes' | docker run -v " + OpenVPNManager.OPENVPN_VPS_FOLDER + ":/etc/openvpn --rm -i " + OpenVPNManager.OPENVPN_IMAGE + " ovpn_revokeclient bar"), any(OutputStream.class), any(OutputStream.class));
 
         // Should throw UnknownUserException if user does not exist
         doReturn(List.of()).when(managerSpy).getUsers();
