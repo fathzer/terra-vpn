@@ -39,6 +39,10 @@ class BasicVPSProviderTest {
             public String name() {
                 return "MockProvider";
             }
+            @Override
+            long getReadyWaitFrequencyMs() {
+            	return 100L;
+            }
         };
         BasicTokenAuthVPSSettings defaultSettings = mock(BasicTokenAuthVPSSettings.class);
         when(defaultSettings.getToken()).thenReturn("token");

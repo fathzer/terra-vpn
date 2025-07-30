@@ -69,7 +69,6 @@ class BasicVPSProviderClientTest {
 
         @Override
         public void checkInstanceType(String region, String instanceType) throws IOException {
-            // Default response type: { "instance_types": ["t2.micro", "c2.medium"] }
             @JsonIgnoreProperties(ignoreUnknown = true)
             record InstanceTypesResponse(java.util.List<String> instance_types) {}
             checkInstanceType(region, instanceType, InstanceTypesResponse.class,

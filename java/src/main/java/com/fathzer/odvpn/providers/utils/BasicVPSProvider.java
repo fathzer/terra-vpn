@@ -92,7 +92,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
                     progress.accept(state);
                 }
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(getReadyWaitFrequencyMs());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new InterruptedIOException();
@@ -101,6 +101,10 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
             if (logger.isInfoEnabled()) logger.info("{} instance {} is ready", this.name(), id);
             return state;
         }
+    }
+    
+    long getReadyWaitFrequencyMs() {
+    	return 3000;
     }
 
     @Override
