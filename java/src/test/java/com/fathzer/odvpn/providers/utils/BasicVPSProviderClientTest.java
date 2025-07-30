@@ -69,7 +69,11 @@ class BasicVPSProviderClientTest {
 
         @Override
         public void checkInstanceType(String region, String instanceType) throws IOException {
-            throw new UnsupportedOperationException("Not implemented");
+            // Default response type: { "instance_types": ["t2.micro", "c2.medium"] }
+            @JsonIgnoreProperties(ignoreUnknown = true)
+            record InstanceTypesResponse(java.util.List<String> instance_types) {}
+            checkInstanceType(region, instanceType, InstanceTypesResponse.class,
+                resp -> resp.instance_types() != null && resp.instance_types().contains(instanceType));
         }
 
         @Override
@@ -187,5 +191,31 @@ class BasicVPSProviderClientTest {
         """);
         record CustomRegionsResponse(List<String> locations) {}
         testClient.checkRegion("sgp1", r -> testClient.objectMapper().readValue(r, CustomRegionsResponse.class).locations().stream());
+    }
+
+    @Test
+    void testCheckInstanceType() throws Exception {
+        // Mock HTTP response for instance types
+        when(httpResponse.body()).thenReturn("""
+            { "instance_types": ["t2.micro", "c2.medium"] }
+        """);
+        // Known type
+        testClient.checkInstanceType("us-east-1", "t2.micro");
+        // Verify request path
+        verify(httpClient).send(argThat(req -> {
+            HttpRequest request = (HttpRequest) req;
+            return request.uri().toString().equals("https://api.example.com/instance-types");
+        }), any());
+        // Clear invocations before next call
+        clearInvocations(httpClient);
+        // Unknown type
+        assertThrows(IllegalArgumentException.class, () -> testClient.checkInstanceType("us-east-1", "x1.large"));
+        // Custom response type
+        when(httpResponse.body()).thenReturn("""
+            { "types": ["t2.micro"] }
+        """);
+        @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+        record CustomTypesResponse(java.util.List<String> types) {}
+        testClient.checkInstanceType("us-east-1", "t2.micro", CustomTypesResponse.class, resp -> resp.types() != null && resp.types().contains("t2.micro"));
     }
 }
