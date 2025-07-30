@@ -19,18 +19,7 @@ import com.fathzer.odvpn.utils.Registerable;
 )
 public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
 	
-	public static class PermanentSettings {
-		private String ip;
-        private String sshUser;
-
-		public String getIp() {
-			return ip;
-		}
-
-        public String getSshUser() {
-            return sshUser;
-        }
-	}
+	public record PermanentSettings(String ip, String sshUser) {}
 
     @Override
     public String name() {
@@ -70,7 +59,7 @@ public class PermanentVPS extends VPSProvider<PermanentVPS.PermanentSettings> {
 
     @Override
     public String getSSHUser() {
-        final String sshUser = resolve(settings.getSshUser());
+        final String sshUser = resolve(settings.sshUser());
         return sshUser != null ? sshUser : super.getSSHUser();
     }
     
