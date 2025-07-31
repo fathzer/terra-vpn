@@ -38,7 +38,7 @@ public class ODVpn implements CommandParser.ODVpnCommands {
     @Override
     public void init(final String name, final Path configPath, final Path openVpnConfigPath, final boolean force) throws IOException {
         logger.info("Configuration file: {}", configPath.toAbsolutePath());
-        final InstanceParameters config = InstanceParametersParser.parse(configPath);
+        final InstanceParameters config = InstanceParametersParser.read(configPath);
         
         if (logger.isInfoEnabled()) {
             logger.info("VPS provider: {}", config.vps().name());

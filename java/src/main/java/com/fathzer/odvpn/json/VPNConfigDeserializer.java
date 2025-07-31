@@ -16,7 +16,8 @@ public class VPNConfigDeserializer extends JsonDeserializer<VPNConfig> {
     public VPNConfig deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         JsonNode node = p.getCodec().readTree(p);
         
-        String hostName = node.get("hostname").asText();
+        JsonNode hostNameNode = node.get("hostname");
+        String hostName = hostNameNode==null ? null : hostNameNode.asText();
         
         JsonNode dnsNode = node.get("dnsServers");
         List<String> dnsServers = null;

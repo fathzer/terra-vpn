@@ -22,7 +22,7 @@ class InstanceParametersDeserializer extends JsonDeserializer<InstanceParameters
             throw new InvalidFormatException(p, "Invalid JSON: " + e.getMessage(), null, InstanceParameters.class);
         }
 
-        if (root == null || !root.isObject()) {
+        if (!root.isObject()) {
             throw new InvalidFormatException(p, "Invalid configuration: expected JSON object", root, InstanceParameters.class);
         }
 

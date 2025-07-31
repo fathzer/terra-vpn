@@ -24,7 +24,7 @@ public class UserCreator {
     }
 
     public static void main(String[] args) throws IOException {
-        final InstanceParameters parameters = InstanceParametersParser.parse(Path.of("data/myvpn/config.json"));
+        final InstanceParameters parameters = InstanceParametersParser.read(Path.of("data/myvpn/config.json"));
         new UserCreator(parameters, Path.of("ssh/id_rsa"), Path.of("data/myvpn")).createUser(args[0]);
     }
 

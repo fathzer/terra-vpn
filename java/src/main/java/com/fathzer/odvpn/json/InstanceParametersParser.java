@@ -17,7 +17,7 @@ public class InstanceParametersParser {
         MAPPER.registerModule(new CustomSerializationModule());
     }
 
-    public static InstanceParameters parse(Path path) throws IOException {
+    public static InstanceParameters read(Path path) throws IOException {
         try {
             return MAPPER.readValue(path.toFile(), InstanceParameters.class);
         } catch (JsonProcessingException e) {

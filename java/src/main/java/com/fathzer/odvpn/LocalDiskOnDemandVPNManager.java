@@ -32,7 +32,7 @@ public class LocalDiskOnDemandVPNManager extends AbstractOnDemandVPNManager {
     }
 
     public LocalDiskOnDemandVPNManager(VPNRepositorySettings settings, String id) throws IOException {
-        this(settings, id, InstanceParametersParser.parse(settings.dataPath().resolve(id).resolve("config.json")));
+        this(settings, id, InstanceParametersParser.read(settings.dataPath().resolve(id).resolve("config.json")));
     }
 
     private Path getVpsInfoPath() {
