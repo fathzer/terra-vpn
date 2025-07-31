@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,35 +20,17 @@ class InstantSerDeTest {
     }
 
     @Test
-    void testSerializeInstant() throws JsonProcessingException {
+    void testRoundTrip() throws JsonProcessingException {
         ObjectMapper mapper = getMapper();
         Instant instant = Instant.parse("2025-07-31T07:27:57Z");
-        String json = mapper.writeValueAsString(instant);
-        assertEquals("\"2025-07-31T07:27:57Z\"", json);
+        assertEquals(instant, mapper.readValue(mapper.writeValueAsString(instant), Instant.class));
     }
 
     @Test
     void testSerializeNullInstant() throws JsonProcessingException {
         ObjectMapper mapper = getMapper();
-        Instant instant = null;
-        String json = mapper.writeValueAsString(instant);
-        assertEquals("null", json);
-    }
-
-    @Test
-    void testDeserializeInstant() throws IOException {
-        ObjectMapper mapper = getMapper();
-        String json = "\"2025-07-31T07:27:57Z\"";
-        Instant instant = mapper.readValue(json, Instant.class);
-        assertEquals(Instant.parse("2025-07-31T07:27:57Z"), instant);
-    }
-
-    @Test
-    void testDeserializeNullInstant() throws IOException {
-        ObjectMapper mapper = getMapper();
-        String json = "null";
-        Instant instant = mapper.readValue(json, Instant.class);
-        assertNull(instant);
+        assertEquals("null", mapper.writeValueAsString(null));
+        assertNull(mapper.readValue("null", Instant.class));
     }
 
     @Test

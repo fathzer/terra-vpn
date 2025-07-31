@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 public class InstantDeserializer extends JsonDeserializer<Instant> {
     @Override
     public Instant deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-        String value = p.getValueAsString();
-        return value == null ? null : Instant.parse(value);
+        return Instant.parse(p.getValueAsString());
     }
 }
