@@ -5,32 +5,20 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fathzer.odvpn.repository.InstanceParameters;
 import com.fathzer.odvpn.repository.VPNConfig;
-import com.fathzer.odvpn.utils.Registerable;
 
 import java.io.IOException;
-import java.util.function.Function;
 
 public class InstanceParametersSerializer extends JsonSerializer<InstanceParameters> {
-
-    private <T> Function<T, String> createProviderId() {
-        return provider -> {
-            Registerable registerable = provider.getClass().getAnnotation(Registerable.class);
-            if (registerable == null) {
-                throw new IllegalArgumentException("Provider " + provider.getClass().getName() + " is not registered");
-            }
-            return registerable.value();
-        };
-    }
     
     @Override
     public void serialize(InstanceParameters value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeStartObject();
         
         gen.writeFieldName("ddns");
-        new ProviderSerializer(createProviderId()).serialize(value.ddns(), gen, serializers);
+        new ProviderSerializer().serialize(value.ddns(), gen, serializers);
 
         gen.writeFieldName("vps");
-        new ProviderSerializer(createProviderId()).serialize(value.vps(), gen, serializers);
+        new ProviderSerializer().serialize(value.vps(), gen, serializers);
         
         JsonSerializer<VPNConfig> vpnSerializer = new VPNConfigSerializer();
         gen.writeFieldName("vpn");

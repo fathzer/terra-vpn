@@ -83,8 +83,6 @@ class BasicVPSProviderTest {
     void testCheckConfiguration_authenticationException() throws Exception {
         when(client.getSSHKeyId("sshKey")).thenThrow(new AuthenticationException(401, "Auth failed"));
         List<String> errors = provider.checkConfiguration();
-        // Print errors for debugging if test fails
-        System.out.println("Errors: " + errors);
         assertFalse(errors.isEmpty());
         assertTrue(errors.stream().anyMatch(e -> e.contains("Auth failed")));
     }
