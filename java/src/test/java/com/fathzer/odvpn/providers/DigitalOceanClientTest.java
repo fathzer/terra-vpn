@@ -124,6 +124,9 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         // STARTING when null ipv4
         setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "new", null));
         assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), client.getState(TEST_INSTANCE_ID));
+        // STARTING when empty ipv4
+        setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "new", "{\"ip_address\": \"\"}"));
+        assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), client.getState(TEST_INSTANCE_ID));
         // IP_READY when ipv4 is provided
         setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "new", IP_V4_JSON));
         assertEquals(new VPSState(TEST_INSTANCE_ID, IP, Status.IP_READY), client.getState(TEST_INSTANCE_ID));
