@@ -8,9 +8,22 @@ import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.jayway.jsonpath.JsonPath;
+import java.net.http.HttpResponse;
 import java.util.List;
+import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
+import com.fathzer.odvpn.repository.VPNConfig;
+import static org.mockito.Mockito.*;
 
 class VultrClientTest extends VPSProviderClientTestBase {
+    // Expose protected getErrorMessage for testing
+    public static class TestableVultrClient extends VultrClient {
+        public TestableVultrClient() {
+            super("dummy-token"); // Provide a dummy API token for testing
+        }
+        public String getErrorMessagePublic(HttpResponse<String> response) {
+            return super.getErrorMessage(response);
+        }
+    }
     private static final String API_URL = "https://api.vultr.com/v2/";
     private static final String INSTANCES_PATH = API_URL + "instances/";
 
@@ -53,9 +66,27 @@ class VultrClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void testGetErrorMessage() {
+        try (TestableVultrClient testClient = new TestableVultrClient()) {
+            // Mockito mock for valid error JSON
+            HttpResponse<String> response = mock(HttpResponse.class);
+            when(response.statusCode()).thenReturn(400);
+            when(response.body()).thenReturn("{\"error\":\"Some error\",\"status\":400}");
+            assertEquals("Some error", testClient.getErrorMessagePublic(response));
+            // Mockito mock for malformed JSON
+            HttpResponse<String> badResponse = mock(HttpResponse.class);
+            when(badResponse.statusCode()).thenReturn(500);
+            when(badResponse.body()).thenReturn("not json");
+            assertTrue(testClient.getErrorMessagePublic(badResponse).contains("Unknown error"));
+            assertTrue(testClient.getErrorMessagePublic(badResponse).contains("500"));
+        }
+    }
+
+    @Test
     void testCreate() throws Exception {
-        var settings = new com.fathzer.odvpn.providers.utils.VPSCreationSettings("test-instance", "ewr", "vc2-1c-1gb", "98765");
-        var vpnConfig = new com.fathzer.odvpn.repository.VPNConfig("vpn.example.com", null, com.fathzer.odvpn.repository.VPNConfig.Protocol.UDP, 1194);
+        var settings = new VPSCreationSettings("test-instance", "ewr", "vc2-1c-1gb", "98765");
+        var vpnConfig = new VPNConfig("vpn.example.com", null, VPNConfig.Protocol.UDP, 1194);
 
         // Mock POST instance creation
         String instanceUri = API_URL + "instances";

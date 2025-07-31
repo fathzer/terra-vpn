@@ -28,6 +28,20 @@ class HetznerClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
+    void testGetSSHKeyId() throws Exception {
+        String sshKeysUri = API_URL + "ssh_keys";
+        // Single key found
+        setupMockResponse(sshKeysUri, "{\"ssh_keys\": [{\"id\": \"123\", \"name\": \"vpn-key\"}] }");
+        assertEquals("123", client.getSSHKeyId("vpn-key"));
+        // No key found
+        setupMockResponse(sshKeysUri, "{\"ssh_keys\": [{\"id\": \"124\", \"name\": \"other-key\"}] }");
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("vpn-key"));
+        // Duplicated keys
+        setupMockResponse(sshKeysUri, "{\"ssh_keys\": [{\"id\": \"123\", \"name\": \"vpn-key\"}, {\"id\": \"124\", \"name\": \"vpn-key\"}] }");
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("vpn-key"));
+    }
+
+    @Test
     void testCheckRegionAndInstanceType() {
         // /locations mock: fsn1 and nbg1 exist
         String locationsUri = API_URL + "locations";
@@ -97,6 +111,9 @@ class HetznerClientTest extends VPSProviderClientTestBase {
         assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), client.getState(TEST_INSTANCE_ID));
         // STARTING when null ipv4
         setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "starting", null));
+        assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), client.getState(TEST_INSTANCE_ID));
+        // STARTING when empty ipv4
+        setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "starting", "{\"id\":12,\"ip\": \"\"}"));
         assertEquals(new VPSState(TEST_INSTANCE_ID, null, Status.STARTING), client.getState(TEST_INSTANCE_ID));
         // IP_READY when ipv4 is provided
         setupMockResponse(uri, String.format(RESPONSE_BODY_FORMAT, "starting", IP_V4_JSON));
