@@ -22,6 +22,37 @@ class VultrClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
+    void testCheckRegionAndInstanceType() {
+        // /regions mock: ewr and fra1 exist, sgp does not
+        String regionsUri = API_URL + "regions";
+        setupMockResponse(regionsUri, """
+        { "regions": [ {"id": "ewr"}, {"id": "fra1"} ] }
+        """);
+        assertDoesNotThrow(() -> client.checkRegion("ewr"));
+        assertDoesNotThrow(() -> client.checkRegion("fra1"));
+        assertThrows(IllegalArgumentException.class, () -> client.checkRegion("sgp"));
+
+        // /plans mock: vc2-1c-1gb available in ewr, not in fra1; vc2-2c-2gb only in fra1
+        String plansUri = API_URL + "plans";
+        setupMockResponse(plansUri, """
+        { "plans": [
+            {"id": "vc2-1c-1gb", "locations": [ "ewr" ] },
+            {"id": "vc2-2c-2gb", "locations": [ "fra1" ] }
+        ] }
+        """);
+        // vc2-1c-1gb in ewr is valid
+        assertDoesNotThrow(() -> client.checkInstanceType("ewr", "vc2-1c-1gb"));
+        // vc2-2c-2gb in fra1 is valid
+        assertDoesNotThrow(() -> client.checkInstanceType("fra1", "vc2-2c-2gb"));
+        // vc2-1c-1gb in fra1 is invalid
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("fra1", "vc2-1c-1gb"));
+        // vc2-2c-2gb in ewr is invalid
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("ewr", "vc2-2c-2gb"));
+        // unknown plan
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("ewr", "doesnotexist"));
+    }
+
+    @Test
     void testCreate() throws Exception {
         var settings = new com.fathzer.odvpn.providers.utils.VPSCreationSettings("test-instance", "ewr", "vc2-1c-1gb", "98765");
         var vpnConfig = new com.fathzer.odvpn.repository.VPNConfig("vpn.example.com", null, com.fathzer.odvpn.repository.VPNConfig.Protocol.UDP, 1194);

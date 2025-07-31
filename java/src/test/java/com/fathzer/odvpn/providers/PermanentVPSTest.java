@@ -16,7 +16,11 @@ class PermanentVPSTest {
     void testCheckConfiguration() {
         // No settings
         PermanentVPS vps = new PermanentVPS();
-        assertTrue(vps.checkConfiguration().contains("Missing IP"));
+        assertEquals(List.of("Missing IP"), vps.checkConfiguration());
+
+        // Null IP
+        vps.setSettings(new PermanentSettings(null, null));
+        assertEquals(List.of("Missing IP"), vps.checkConfiguration());
 
         // Invalid IP
         vps.setSettings(new PermanentSettings("not.an.ip", null));

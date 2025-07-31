@@ -40,7 +40,8 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
-    void testGetRegions() {
+    void testGetRegionsAndInstanceTypes() {
+        // Check regions
         final String uri = API_URL + "regions?per_page=200";
         setupMockResponse(uri, """
         {
@@ -54,6 +55,16 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
         assertDoesNotThrow(() -> client.checkRegion("nyc1"));
         assertThrows(IllegalArgumentException.class, () -> client.checkRegion("nonexistent-region"));
         assertThrows(IllegalArgumentException.class, () -> client.checkRegion("nyc2"));
+
+        // Check instance types
+        // Should NOT throw for available region/type
+        assertDoesNotThrow(() -> client.checkInstanceType("nyc1", "s-1vcpu-1gb"));
+        // Should throw for unavailable region
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("nyc2", "s-1vcpu-1gb"));
+        // Should throw for available region but unavailable type
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("nyc1", "s-4vcpu-8gb"));
+        // Should throw for non-existent region
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("doesnotexist", "s-1vcpu-1gb"));
     }
 
     @Test

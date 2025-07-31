@@ -28,6 +28,37 @@ class HetznerClientTest extends VPSProviderClientTestBase {
     }
 
     @Test
+    void testCheckRegionAndInstanceType() {
+        // /locations mock: fsn1 and nbg1 exist
+        String locationsUri = API_URL + "locations";
+        setupMockResponse(locationsUri, """
+        { "locations": [ {"name": "fsn1"}, {"name": "nbg1"} ] }
+        """);
+        assertDoesNotThrow(() -> client.checkRegion("fsn1"));
+        assertDoesNotThrow(() -> client.checkRegion("nbg1"));
+        assertThrows(IllegalArgumentException.class, () -> client.checkRegion("doesnotexist"));
+
+        // /server_types mock: cx11 available in fsn1, not in nbg1; cx21 only in nbg1
+        String typesUri = API_URL + "server_types";
+        setupMockResponse(typesUri, """
+        { "server_types": [
+            {"name": "cx11", "prices": [ {"location": "fsn1"} ] },
+            {"name": "cx21", "prices": [ {"location": "nbg1"} ] }
+        ] }
+        """);
+        // cx11 in fsn1 is valid
+        assertDoesNotThrow(() -> client.checkInstanceType("fsn1", "cx11"));
+        // cx21 in nbg1 is valid
+        assertDoesNotThrow(() -> client.checkInstanceType("nbg1", "cx21"));
+        // cx11 in nbg1 is invalid
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("nbg1", "cx11"));
+        // cx21 in fsn1 is invalid
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("fsn1", "cx21"));
+        // unknown type
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType("fsn1", "doesnotexist"));
+    }
+
+    @Test
     void testCreate() throws Exception {
         var settings = new com.fathzer.odvpn.providers.utils.VPSCreationSettings("test-server", "fsn1", "cx11", "12345");
         var vpnConfig = new com.fathzer.odvpn.repository.VPNConfig("vpn.example.com", null, com.fathzer.odvpn.repository.VPNConfig.Protocol.UDP, 1194);
