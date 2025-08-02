@@ -45,5 +45,4 @@ public class BasicVPSSettings {
     public String getInstanceType(String defaultInstanceType) {
         return instanceType == null ? defaultInstanceType : instanceType;
     }
-
 }

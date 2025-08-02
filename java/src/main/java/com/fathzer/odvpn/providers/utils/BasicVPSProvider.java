@@ -63,7 +63,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
                 errors.add(e.getMessage());
             }
             // Check if region exists
-            String region = getDefaultRegion();
+            String region = settings.getRegion(getDefaultRegion());
             try {
                 client.checkRegion(region);
             } catch (IllegalArgumentException e) {
@@ -71,7 +71,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
             }
             // Check if instance type exists in the region
             try {
-                client.checkInstanceType(region, getDefaultInstanceType());
+                client.checkInstanceType(region, settings.getInstanceType(getDefaultInstanceType()));
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
@@ -83,12 +83,12 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
     public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) throws IOException {
         try (BasicVPSProviderClient client = getClient()) {
             final String sshKeyId = client.getSSHKeyId(getSshKeyName());
-            final String id = client.create(new VPSCreationSettings(getInstanceName(), getDefaultRegion(),
-                getDefaultInstanceType(), sshKeyId), vpnConfig);
+            final String id = client.create(new VPSCreationSettings(getInstanceName(), settings.getRegion(getDefaultRegion()),
+                settings.getInstanceType(getDefaultInstanceType()), sshKeyId), vpnConfig);
             if (logger.isInfoEnabled()) logger.info("{} instance created with ID {} start waiting for it to be ready", this.name(), id);
             VPSState state;
-            for (state=client.getState(id); !state.status().equals(Status.READY); state=client.getState(id)) {
-                if (!state.status().equals(Status.IP_READY)) {
+            for (state = client.getState(id); !Status.READY.equals(state.status()); state=client.getState(id)) {
+                if (!Status.IP_READY.equals(state.status())) {
                     progress.accept(state);
                 }
                 try {

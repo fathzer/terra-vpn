@@ -2,6 +2,7 @@ package com.fathzer.odvpn.providers.utils;
 
 import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
 import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
+import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.repository.VPNConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -133,5 +134,36 @@ class BasicVPSProviderTest {
         doNothing().when(client).delete("id");
         provider.deleteVPS("id");
         verify(client).delete("id");
+    }
+
+    @Test
+    void testUsesSettingsValuesAndNotDefault() throws Exception {
+        // Arrange: set up settings with specific region/instanceType
+        BasicTokenAuthVPSSettings settingsMock = new BasicTokenAuthVPSSettings();
+        settingsMock.setToken("token");
+        settingsMock.setSshKeyName("sshKey");
+        settingsMock.setRegion("custom-region");
+        settingsMock.setInstanceType("custom-type");
+
+        provider.setSettings(settingsMock);
+        when(client.getSSHKeyId("sshKey")).thenReturn("keyId");
+        doNothing().when(client).checkRegion(any());
+        doNothing().when(client).checkInstanceType(any(), any());
+        provider.checkConfiguration();
+        // Assert: verify correct values passed to checkInstanceType
+        verify(client).checkInstanceType("custom-region", "custom-type");
+
+        // Assert: verify correct values passed to create
+        VPNConfig vpnConfig = mock(VPNConfig.class);
+        when(client.create(any(), any())).thenReturn("instanceId");
+        when(client.getState(anyString())).thenReturn(new VPSState("id", "1.1.1.1", BasicVPSProvider.Status.READY));
+        
+        provider.createVPS(vpnConfig, s->{});
+        verify(client).create(argThat(settings ->
+            settings instanceof VPSCreationSettings
+            && "custom-region".equals(((VPSCreationSettings)settings).region())
+            && "custom-type".equals(((VPSCreationSettings)settings).instanceType())
+        ), eq(vpnConfig));
+        verify(client, atLeastOnce()).getSSHKeyId("sshKey");
     }
 }
