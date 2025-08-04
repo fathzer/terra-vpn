@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 
 public abstract class AbstractVPSProviderClient implements AutoCloseable {
+    @FunctionalInterface
     public static interface Authentication {
         public Builder authenticate(Builder builder);
     }

@@ -38,7 +38,7 @@ Par défaut, les données sont stockées dans un répertoire `data` dans le work
 ## TODO
 - [x] Implémentation du fournisseur de VPS Digital Ocean.
   - [x] Ouvrir les ports nécessaires.
-  - [ ] Portage en full Java.
+  - [x] Portage en full Java.
 - [x] Implémentation d'un fournisseur de VPS "Permanent".
   - [x] Implémentation.
   - [x] Doc.

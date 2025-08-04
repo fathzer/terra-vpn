@@ -19,6 +19,10 @@ import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
 
+    protected BasicVPSProviderClient(Authentication authentication) {
+        super(authentication);
+    }
+    
     protected BasicVPSProviderClient(String token) {
         super(new TokenAuthentication(token));
     }
