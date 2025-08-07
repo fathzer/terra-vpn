@@ -1,4 +1,4 @@
-package com.fathzer.odvpn;
+package com.fathzer.odvpn.providers.utils;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -68,12 +68,12 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         }
     }
 
-    protected final HttpClient client;
+    private HttpClient client;
     protected final ObjectMapper objectMapper;
     protected final Authentication authentication;
     
     protected AbstractVPSProviderClient(Authentication authentication) {
-        this.client = HttpClient.newHttpClient();
+        this.client = null;
         this.objectMapper = new ObjectMapper();
         this.authentication = authentication;
     }
@@ -82,9 +82,31 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         return this.authentication.authenticate(HttpRequest.newBuilder().uri(uri));
     }
 
+    /**
+     * Gets the HTTP client used by this client.
+     * @return the HTTP client
+     */
+    public HttpClient getHttpClient() {
+        if (this.client == null) {
+            this.client = HttpClient.newHttpClient();
+        }
+        return this.client;
+    }
+
+    /**
+     * Sets the HTTP client to be used by this client.
+     * @param client the HTTP client
+     */
+    public void setHttpClient(HttpClient client) {
+        close();
+        this.client = client;
+    }
+
     @Override
     public void close() {
-        this.client.close();
+        if (this.client != null) {
+            this.client.close();
+        }
     }
 
     /**
@@ -97,7 +119,7 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
      */
     public HttpResponse<String> doRequest(HttpRequest request) throws IOException {
         try {
-            HttpResponse<String> response = this.client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = getHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 401 || response.statusCode() == 403) {
                 throw this.getAuthenticationException(response);
             } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
