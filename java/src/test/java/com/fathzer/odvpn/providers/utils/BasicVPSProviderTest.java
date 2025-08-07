@@ -1,8 +1,8 @@
 package com.fathzer.odvpn.providers.utils;
 
-import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
-import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.VPSProvider.VPSState;
+import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.AuthenticationException;
+import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.repository.VPNConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

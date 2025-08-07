@@ -2,7 +2,6 @@ package com.fathzer.odvpn.providers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
@@ -53,7 +52,6 @@ class ScalewayClientTest extends VPSProviderClientTestBase {
         assertNull(getScalewayClient().getProjectId(), "Project ID should be null for default project");
     }
     
-    @Disabled
     @Test
     void testSetProjectIdUnknownProjectThrows() {
         String projectId = "unknown-id";
@@ -72,7 +70,6 @@ class ScalewayClientTest extends VPSProviderClientTestBase {
         assertTrue(ex.getMessage().contains("Unknown project ID"));
     }
 
-    @Disabled
     @Test
     void testSetProjectIdMalformedProjectThrows() {
         String projectId = "bad-id";

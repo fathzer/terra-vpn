@@ -18,7 +18,6 @@ import org.mockito.MockitoAnnotations;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.repository.VPNConfig;
 
@@ -30,7 +29,7 @@ class BasicVPSProviderClientTest {
         private String customRegionsPath;
         
         public TestClient(String token) {
-            super(token);
+            super(new TokenAuthentication(token));
         }
 
         @Override

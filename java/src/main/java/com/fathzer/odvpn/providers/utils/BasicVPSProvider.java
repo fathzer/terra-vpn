@@ -9,10 +9,10 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fathzer.odvpn.AbstractVPSProviderClient.AuthenticationException;
-import com.fathzer.odvpn.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.VPSProvider;
+import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.AuthenticationException;
+import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.ErrorResponseException;
 
 public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> extends VPSProvider<T> {
     private static final Logger logger = LoggerFactory.getLogger(BasicVPSProvider.class);

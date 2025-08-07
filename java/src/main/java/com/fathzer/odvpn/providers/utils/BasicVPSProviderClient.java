@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
-import com.fathzer.odvpn.AbstractVPSProviderClient;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
@@ -22,7 +21,7 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
     protected BasicVPSProviderClient(Authentication authentication) {
         super(authentication);
     }
-    
+
     protected BasicVPSProviderClient(String token) {
         super(new TokenAuthentication(token));
     }

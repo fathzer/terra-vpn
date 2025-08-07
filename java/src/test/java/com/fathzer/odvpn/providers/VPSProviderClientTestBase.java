@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -41,37 +41,39 @@ public abstract class VPSProviderClientTestBase {
     protected void validateHeaders(HttpRequest request) {
         assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
     }
-
+    @SuppressWarnings({"unchecked"})
     @BeforeEach
     void setUp() {
-        // Clear mock responses to avoid test pollution
         mockResponses.clear();
-        // Create a mock of the client to test
-        client = Mockito.mock(getClientClass(), Mockito.withSettings()
-                .useConstructor(TEST_TOKEN)
-                .defaultAnswer(Mockito.CALLS_REAL_METHODS));
-
-        // Mock the doRequest method to delegate to mockResponses
-        Answer<HttpResponse<String>> answer = (Answer<HttpResponse<String>>) invocation -> {
-            HttpRequest request = invocation.getArgument(0);
-            String reqUri = request.uri().toString();
-            String reqMethod = request.method().toUpperCase();
-            validateHeaders(request);
-            ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
-            if (respData == null) {
-                throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
-            }
-            if (respData.requestBodyCheckConsumer != null) {
-                final String requestBodyJson = getRequestBodyJson(request);
-                assertNotNull(requestBodyJson, "Request body JSON of " + reqMethod + " " + reqUri + " is null");
-                respData.requestBodyCheckConsumer.accept(requestBodyJson);
-            }
-            return respData.response();
-        };
+        // Create a mock HttpClient
+        HttpClient mockHttpClient = Mockito.mock(HttpClient.class);
         try {
-            Mockito.doAnswer(answer).when(client).doRequest(Mockito.any(HttpRequest.class));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            client = getClientClass().getConstructor(String.class).newInstance(TEST_TOKEN);
+            client.setHttpClient(mockHttpClient);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to instantiate client", e);
+        }
+        // Set up the mock to return the appropriate HttpResponse for each request
+        try {
+            Mockito.when(mockHttpClient.send(Mockito.any(HttpRequest.class), Mockito.any(HttpResponse.BodyHandler.class)))
+                    .thenAnswer((Answer<HttpResponse<String>>) invocation -> {
+                        HttpRequest request = invocation.getArgument(0);
+                        String reqUri = request.uri().toString();
+                        String reqMethod = request.method().toUpperCase();
+                        validateHeaders(request);
+                        ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
+                        if (respData == null) {
+                            throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
+                        }
+                        if (respData.requestBodyCheckConsumer != null) {
+                            final String requestBodyJson = getRequestBodyJson(request);
+                            assertNotNull(requestBodyJson, "Request body JSON of " + reqMethod + " " + reqUri + " is null");
+                            respData.requestBodyCheckConsumer.accept(requestBodyJson);
+                        }
+                        return respData.response();
+                    });
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
