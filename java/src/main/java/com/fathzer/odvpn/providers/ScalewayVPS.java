@@ -1,11 +1,12 @@
 package com.fathzer.odvpn.providers;
 
+import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import com.fathzer.odvpn.VPSProvider;
-import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
-import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.odvpn.providers.utils.BasicVPSProvider;
+import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.fathzer.odvpn.utils.Registerable;
 
 /**
@@ -16,34 +17,45 @@ import com.fathzer.odvpn.utils.Registerable;
         value = "scaleway",
         classes = {VPSProvider.class}
 )
-public class ScalewayVPS extends VPSProvider<BasicTokenAuthVPSSettings> {
+public class ScalewayVPS extends BasicVPSProvider<ScalewaySettings> {
     @Override
     public String name() {
         return "Scaleway VPS";
     }
 
     @Override
-    public Class<BasicTokenAuthVPSSettings> getConfigClass() {
-        return BasicTokenAuthVPSSettings.class;
+    public Class<ScalewaySettings> getConfigClass() {
+        return ScalewaySettings.class;
     }
 
     @Override
-    public List<String> checkConfiguration() {
-        return List.of();
+    protected BasicVPSProviderClient getClient() {
+        return new ScalewayClient(getToken());
     }
 
     @Override
-    public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) {
-        throw new UnsupportedOperationException();
+    protected String getDefaultRegion() {
+        return "pl-waw-2";
     }
 
     @Override
-    public boolean exists(String id) {
-        return false;
+    protected String getDefaultInstanceType() {
+        return "STARDUST1-S";
     }
 
     @Override
-    public void deleteVPS(String id) {
-        throw new UnsupportedOperationException();
+    public List<String> checkConfiguration() throws IOException {
+        final List<String> errors = new LinkedList<>();
+        String projectId = settings.getProjectId();
+        if (projectId.trim().isEmpty()) {
+            projectId = null;
+        }
+        try {
+            ((ScalewayClient) getClient()).setProjectId(projectId);
+        } catch (IllegalArgumentException e) {
+            errors.add(e.getMessage());
+        }
+        errors.addAll(super.checkConfiguration());
+        return errors;
     }
 }

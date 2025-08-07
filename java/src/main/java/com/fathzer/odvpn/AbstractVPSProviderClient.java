@@ -87,6 +87,14 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         this.client.close();
     }
 
+    /**
+     * Sends a request to the provider API.
+     * @param request the request
+     * @return the response
+     * @throws IOException if an I/O error occurs. The precise type of exception depends on the implementation of
+     *  @link{#getAuthenticationException(HttpResponse)}, @link{#getErrorResponseException(HttpResponse)},
+     *  @link{#getServerErrorException(HttpResponse)}.
+     */
     public HttpResponse<String> doRequest(HttpRequest request) throws IOException {
         try {
             HttpResponse<String> response = this.client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -108,14 +116,29 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
         return response.uri()+" - "+response.body();
     }
 
+    /**
+     * Builds an authentication exception (called by @link{#doRequest(HttpRequest)} when the response status code is 401 or 403).
+     * @param response the response
+     * @return the authentication exception
+     */
     protected AuthenticationException getAuthenticationException(HttpResponse<String> response) {
         return new AuthenticationException(response.statusCode(), "Authentication failed "+this.getErrorMessage(response));
     }
 
+    /**
+     * Builds an error response exception (called by @link{#doRequest(HttpRequest)} when the response status code is between 400 and 499, but not 401 or 403).
+     * @param response the response
+     * @return the error response exception
+     */
     protected ErrorResponseException getErrorResponseException(HttpResponse<String> response) {
         return new ErrorResponseException(response.statusCode(), "Error " + this.getErrorMessage(response));
     }
 
+    /**
+     * Builds a server error exception (called by @link{#doRequest(HttpRequest)} when the response status code is between 500 and 599).
+     * @param response the response
+     * @return the server error exception
+     */
     protected ServerErrorException getServerErrorException(HttpResponse<String> response) {
         return new ServerErrorException(response.statusCode(), "Server error " + this.getErrorMessage(response));
     }

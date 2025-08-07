@@ -25,7 +25,7 @@ import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
  * Base class for tests of VPSProviderClient implementations.
  */
 public abstract class VPSProviderClientTestBase {
-    private static final String TEST_TOKEN = "test-token";
+    protected static final String TEST_TOKEN = "test-token";
 
     protected BasicVPSProviderClient client;
     private record RequestKey(String uri, String method) {}
@@ -33,6 +33,14 @@ public abstract class VPSProviderClientTestBase {
     private Map<RequestKey, ResponseData> mockResponses = new HashMap<>();
 
     protected abstract Class<? extends BasicVPSProviderClient> getClientClass();
+
+    /**
+     * Override this to customize header validation logic per provider.
+     * Default: checks for Authorization: Bearer <token>
+     */
+    protected void validateHeaders(HttpRequest request) {
+        assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
+    }
 
     @BeforeEach
     void setUp() {
@@ -48,7 +56,7 @@ public abstract class VPSProviderClientTestBase {
             HttpRequest request = invocation.getArgument(0);
             String reqUri = request.uri().toString();
             String reqMethod = request.method().toUpperCase();
-            assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
+            validateHeaders(request);
             ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
             if (respData == null) {
                 throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
@@ -72,11 +80,24 @@ public abstract class VPSProviderClientTestBase {
      * @param uri The request URI
      * @param method The HTTP method (GET, POST, etc)
      * @param responseBody The mock response body
+     * @param requestBodyCheckConsumer A consumer that checks the request body JSON
      */
     protected void setupMockResponse(String uri, String method, String responseBody, Consumer<String> requestBodyCheckConsumer) {
+        setupMockResponse(uri, method, 200, responseBody, requestBodyCheckConsumer);
+    }
+
+    /**
+     * Sets up a mock response for a given URI and HTTP method.
+     * @param uri The request URI
+     * @param method The HTTP method (GET, POST, etc)
+     * @param statusCode The HTTP status code
+     * @param responseBody The mock response body
+     * @param requestBodyCheckConsumer A consumer that checks the request body JSON
+     */
+    protected void setupMockResponse(String uri, String method, int statusCode, String responseBody, Consumer<String> requestBodyCheckConsumer) {
         @SuppressWarnings("unchecked")
 		HttpResponse<String> mockResponse = mock(HttpResponse.class);
-        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.statusCode()).thenReturn(statusCode);
         when(mockResponse.body()).thenReturn(responseBody);
         mockResponses.put(new RequestKey(uri, method.toUpperCase()), new ResponseData(mockResponse, requestBodyCheckConsumer));
     }
