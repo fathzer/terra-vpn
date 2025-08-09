@@ -8,13 +8,12 @@ import org.junit.jupiter.api.Test;
 
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
-import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
 
-class DigitalOceanClientTest extends VPSProviderClientTestBase {
+class DigitalOceanClientTest extends VPSProviderClientTestBase<DigitalOceanClient> {
     private static final String API_URL = "https://api.digitalocean.com/v2/";
     private static final String SERVERS_PATH = API_URL + "droplets/";
     
@@ -27,7 +26,7 @@ class DigitalOceanClientTest extends VPSProviderClientTestBase {
     private static final String IP_V4_JSON = "{\"ip_address\": \""+IP+"\"}";
 
     @Override
-    protected Class<? extends BasicVPSProviderClient> getClientClass() {
+    protected Class<DigitalOceanClient> getClientClass() {
         return DigitalOceanClient.class;
     }
 

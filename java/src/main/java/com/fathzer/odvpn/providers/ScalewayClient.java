@@ -16,6 +16,9 @@ import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
 import com.fathzer.odvpn.repository.VPNConfig;
 
 public class ScalewayClient extends BasicVPSProviderClient {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record SshKey(String id, String name, @JsonProperty("organization_id") String organizationId, @JsonProperty("project_id") String projectId, boolean disabled) {}
+
     private static final String API_URL = "https://api.scaleway.com";
     private static final Set<String> REGIONS;
 
@@ -74,22 +77,34 @@ public class ScalewayClient extends BasicVPSProviderClient {
         return API_URL;
     }
 
+    private boolean matchesProjectId(SshKey sshKey) {
+        if (this.projectId==null) {
+            return sshKey.organizationId().equals(sshKey.projectId());
+        } else {
+            return this.projectId.equals(sshKey.projectId());
+        }
+    }
+
     @Override
-    public String getSSHKeyId(String sshKey) throws IOException {//TODO
+    public String getSSHKeyId(String sshKey) throws IOException {
         final URI uri = URI.create(getRootUrl() + "/iam/v1alpha/ssh-keys");
         final String response = this.doRequest(this.newRequest(uri).build()).body();
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record SshKey(String id, String name, @JsonProperty("organization_id") String organizationId, @JsonProperty("project_id") String projectId, boolean disabled) {}
-        @JsonIgnoreProperties(ignoreUnknown = true)
         record SshKeyResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
         final List<SshKey> sshKeys = this.objectMapper.readValue(response, SshKeyResponse.class).sshKeys();
-        final List<String> projectKeys = sshKeys.stream().filter(s -> s.projectId().equals(projectId)).map(SshKey::id).toList();
+        List<SshKey> projectKeys = sshKeys.stream().filter(this::matchesProjectId).filter(s -> s.name().equals(sshKey)).toList();
         if (projectKeys.isEmpty()) {
-            throw new IllegalArgumentException("Unknown project ID " + projectId);
-        } else if (projectKeys.size() > 1) {
-            throw new IllegalArgumentException("Duplicated project ID " + projectId);
+            throw new IllegalArgumentException("Unknown key");
+        } else {
+            projectKeys = projectKeys.stream().filter(s -> !s.disabled()).toList();
+            if (projectKeys.isEmpty()) {
+                throw new IllegalArgumentException("Disabled key");
+            }
+            if (projectKeys.size() > 1) {
+                throw new IllegalArgumentException("Duplicated key");
+            }
+            return projectKeys.get(0).id();
         }
-        return projectKeys.get(0);
     }
 
     @Override
@@ -117,11 +132,6 @@ public class ScalewayClient extends BasicVPSProviderClient {
     private String getRegionURI(String region) {
         return API_URL + "/instance/v1/zones/" + region;
     }
-
-	void checkProjectId(String projectId, String sshKey) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'checkProjectId'");
-	}
 
     @Override
     public String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException {

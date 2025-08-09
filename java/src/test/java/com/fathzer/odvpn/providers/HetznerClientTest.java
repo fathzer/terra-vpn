@@ -6,11 +6,10 @@ import org.junit.jupiter.api.Test;
 
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
-import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 
-class HetznerClientTest extends VPSProviderClientTestBase {
+class HetznerClientTest extends VPSProviderClientTestBase<HetznerClient> {
     private static final String API_URL = "https://api.hetzner.cloud/v1/";
     private static final String SERVERS_PATH = API_URL + "servers/";
     
@@ -23,7 +22,7 @@ class HetznerClientTest extends VPSProviderClientTestBase {
     private static final String IP_V4_JSON = "{\"id\":12,\"ip\": \""+IP+"\"}}";
 
     @Override
-    protected Class<? extends BasicVPSProviderClient> getClientClass() {
+    protected Class<HetznerClient> getClientClass() {
         return HetznerClient.class;
     }
 

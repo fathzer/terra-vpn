@@ -24,15 +24,15 @@ import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 /**
  * Base class for tests of VPSProviderClient implementations.
  */
-public abstract class VPSProviderClientTestBase {
+public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient> {
     protected static final String TEST_TOKEN = "test-token";
 
-    protected BasicVPSProviderClient client;
+    protected T client;
     private record RequestKey(String uri, String method) {}
     private record ResponseData(HttpResponse<String> response, Consumer<String> requestBodyCheckConsumer) {}
     private Map<RequestKey, ResponseData> mockResponses = new HashMap<>();
 
-    protected abstract Class<? extends BasicVPSProviderClient> getClientClass();
+    protected abstract Class<T> getClientClass();
 
     /**
      * Override this to customize header validation logic per provider.

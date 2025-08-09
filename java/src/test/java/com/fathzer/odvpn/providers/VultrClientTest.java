@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
-import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.jayway.jsonpath.JsonPath;
 import java.net.http.HttpResponse;
 import java.util.List;
@@ -14,7 +13,7 @@ import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
 import com.fathzer.odvpn.repository.VPNConfig;
 import static org.mockito.Mockito.*;
 
-class VultrClientTest extends VPSProviderClientTestBase {
+class VultrClientTest extends VPSProviderClientTestBase<VultrClient> {
     // Expose protected getErrorMessage for testing
     public static class TestableVultrClient extends VultrClient {
         public TestableVultrClient() {
@@ -30,7 +29,7 @@ class VultrClientTest extends VPSProviderClientTestBase {
     private static final String TEST_INSTANCE_ID = "480db6b7-2c94-4f3c-882a-1e2415e589f3";
     
     @Override
-    protected Class<? extends BasicVPSProviderClient> getClientClass() {
+    protected Class<VultrClient> getClientClass() {
         return VultrClient.class;
     }
 
