@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
@@ -133,15 +134,51 @@ public class ScalewayClient extends BasicVPSProviderClient {
         return API_URL + "/instance/v1/zones/" + region;
     }
 
+    private String getIpsURI(String region) {
+        return getRegionURI(region) + "/ips/";
+    }
+
     @Override
     public String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+        // Create IP address
+        record IPCreationRequest(@JsonInclude(JsonInclude.Include.NON_NULL) String projectId, String type) {}
+        //TODO Change address type to ipv4
+        final String ipResponse = this.post(URI.create(getIpsURI(settings.region())), new IPCreationRequest(this.projectId, "routed_ipv6")); 
+        final String ipId = this.objectMapper.readTree(ipResponse).get("ip").get("id").asText();
+
+        // Create vps
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        record Volume(@JsonProperty("volume_type") String type, String size) {}
+        @SuppressWarnings("java:S6218")
+        record InstanceCreationRequest(
+            @JsonInclude(JsonInclude.Include.NON_NULL) String project, String name,
+            @JsonProperty("commercial_type") String instanceType, String image,
+            @JsonProperty("routed_ip_enabled") boolean routedIpEnabled, @JsonProperty("ip_ids") List<String> ipIds,
+            Map<String, Volume> volumes, String[] tags) {}
+        final String[] tags = new String[] { "On-Demand-Vpn" };
+        final InstanceCreationRequest request = new InstanceCreationRequest(
+            this.projectId, settings.name(), settings.instanceType(), "41cce026-c90b-40cd-aead-a075a07196fb",
+            true, List.of(ipId),
+            Map.of("0", new Volume("l_ssd", "10000000000")), tags);
+        final String response = this.post(URI.create(getRegionURI(settings.region()) + "/servers"), request);
+        final String serverId = this.objectMapper.readTree(response).get("server").get("id").asText();
+
+        // Return the server ID and the IP ID
+        return serverId+"/"+settings.region()+"/"+ipId;
     }
 
     @Override
     public VPSState getState(String id) throws IOException {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void delete(String id) throws IOException {
+        final String serverId = id.split("/")[0];
+        final String region = id.split("/")[1];
+        final String ipId = id.split("/")[2];
+        super.delete(serverId);
+        this.doRequest(this.newRequest(URI.create(getIpsURI(region) + ipId)).DELETE().build());
     }
 }

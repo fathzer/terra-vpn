@@ -46,12 +46,8 @@ public class ScalewayVPS extends BasicVPSProvider<ScalewaySettings> {
     @Override
     public List<String> checkConfiguration() throws IOException {
         final List<String> errors = new LinkedList<>();
-        String projectId = settings.getProjectId();
-        if (projectId.trim().isEmpty()) {
-            projectId = null;
-        }
         try {
-            ((ScalewayClient) getClient()).setProjectId(projectId);
+            ((ScalewayClient) getClient()).setProjectId(settings.getProjectId());
         } catch (IllegalArgumentException e) {
             errors.add(e.getMessage());
         }
