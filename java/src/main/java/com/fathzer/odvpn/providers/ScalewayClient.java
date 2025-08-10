@@ -88,7 +88,7 @@ public class ScalewayClient extends BasicVPSProviderClient {
 
     @Override
     public String getSSHKeyId(String sshKey) throws IOException {
-        final URI uri = URI.create(getRootUrl() + "/iam/v1alpha/ssh-keys");
+        final URI uri = URI.create(getRootUrl() + "/iam/v1alpha1/ssh-keys");
         final String response = this.doRequest(this.newRequest(uri).build()).body();
         @JsonIgnoreProperties(ignoreUnknown = true)
         record SshKeyResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
@@ -153,15 +153,19 @@ public class ScalewayClient extends BasicVPSProviderClient {
         record InstanceCreationRequest(
             @JsonInclude(JsonInclude.Include.NON_NULL) String project, String name,
             @JsonProperty("commercial_type") String instanceType, String image,
-            @JsonProperty("routed_ip_enabled") boolean routedIpEnabled, @JsonProperty("ip_ids") List<String> ipIds,
+            @JsonProperty("dynamic_ip_required") boolean autoAllocatedIp, @JsonProperty("routed_ip_enabled") boolean routedIpEnabled, @JsonProperty("ip_ids") List<String> ipIds,
             Map<String, Volume> volumes, String[] tags) {}
         final String[] tags = new String[] { "On-Demand-Vpn" };
         final InstanceCreationRequest request = new InstanceCreationRequest(
             this.projectId, settings.name(), settings.instanceType(), "41cce026-c90b-40cd-aead-a075a07196fb",
-            true, List.of(ipId),
+            false, true, List.of(ipId),
             Map.of("0", new Volume("l_ssd", "10000000000")), tags);
-        final String response = this.post(URI.create(getRegionURI(settings.region()) + "/servers"), request);
+        final String serverURI = getRegionURI(settings.region()) + "/servers";
+        final String response = this.post(URI.create(serverURI), request);
         final String serverId = this.objectMapper.readTree(response).get("server").get("id").asText();
+
+        // Boot the VPS
+        this.post(URI.create(serverURI + "/" + serverId + "/action"), Map.of("action", "poweron"));
 
         // Return the server ID and the IP ID
         return serverId+"/"+settings.region()+"/"+ipId;

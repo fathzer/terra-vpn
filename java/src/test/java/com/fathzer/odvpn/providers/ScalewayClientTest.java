@@ -92,7 +92,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
     }
 
     @Test
-    void testCreate_allScenarios() throws Exception {
+    void testCreate() throws Exception {
         ObjectMapper om = new ObjectMapper();
         // Default project (projectId == null): project fields must be omitted
         client.setProjectId(null);
@@ -125,6 +125,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
                     assertEquals("vm1", root.get("name").asText());
                     assertEquals("DEV1-S", root.get("commercial_type").asText());
                     assertEquals("41cce026-c90b-40cd-aead-a075a07196fb", root.get("image").asText());
+                    assertFalse(root.get("dynamic_ip_required").asBoolean());
                     assertTrue(root.get("routed_ip_enabled").asBoolean());
                     assertEquals(1, root.get("ip_ids").size());
                     assertEquals("ip-1", root.get("ip_ids").get(0).asText());
@@ -135,6 +136,13 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
                 } catch (Exception e) { fail(e); }
             }
         );
+
+        setupMockResponse(serversUri + "/srv-1/action", "POST", "{}", body -> {
+            try {
+                JsonNode root = om.readTree(body);
+                assertEquals("poweron", root.get("action").asText());
+            } catch (Exception e) { fail(e); }
+        });
 
         String id = client.create(new com.fathzer.odvpn.providers.utils.VPSCreationSettings("vm1", region, "DEV1-S", "ignored"), null);
         assertEquals("srv-1/"+region+"/ip-1", id);
@@ -173,7 +181,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
                 } catch (Exception e) { fail(e); }
             }
         );
-
+        setupMockResponse(serversUri + "/srv-2/action", "POST", "{}", null);
         id = client.create(new com.fathzer.odvpn.providers.utils.VPSCreationSettings("vm2", region, "DEV1-S", "ignored"), null);
         assertEquals("srv-2/"+region+"/ip-2", id);
     }
@@ -214,7 +222,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
 
     @Test
     void testGetSSHKeyId_allScenarios() throws Exception {
-        final String keysUri = "https://api.scaleway.com/iam/v1alpha/ssh-keys";
+        final String keysUri = "https://api.scaleway.com/iam/v1alpha1/ssh-keys";
 
         // 1) Default project (projectId == null) -> match where organization_id == project_id
         String keysResponse = """
