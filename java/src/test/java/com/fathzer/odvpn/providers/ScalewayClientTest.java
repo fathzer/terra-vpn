@@ -6,6 +6,9 @@ import java.net.http.HttpRequest;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
     @Override
     protected void validateHeaders(HttpRequest request) {
@@ -86,6 +89,111 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         setupMockResponse(uri, "GET", 400, responseBody, null);
         ex = assertThrows(IllegalArgumentException.class, () -> client.setProjectId(projectId));
         assertTrue(ex.getMessage().contains("Malformed project ID"));
+    }
+
+    @Test
+    void testCreate_allScenarios() throws Exception {
+        ObjectMapper om = new ObjectMapper();
+        // Default project (projectId == null): project fields must be omitted
+        client.setProjectId(null);
+
+        String region = "fr-par-1";
+        String ipsUri = "https://api.scaleway.com/instance/v1/zones/" + region + "/ips/";
+        String serversUri = "https://api.scaleway.com/instance/v1/zones/" + region + "/servers";
+
+        // 1) Default project: IP creation should not include projectId
+        setupMockResponse(ipsUri, "POST",
+            """
+            {"ip":{"id":"ip-1"}}
+            """,
+            body -> {
+                try {
+                    JsonNode root = om.readTree(body);
+                    assertEquals("routed_ipv6", root.get("type").asText());
+                    assertFalse(root.has("projectId"), "projectId should be omitted for default project");
+                } catch (Exception e) { fail(e); }
+            }
+        );
+        setupMockResponse(serversUri, "POST",
+            """
+            {"server":{"id":"srv-1"}}
+            """,
+            body -> {
+                try {
+                    JsonNode root = om.readTree(body);
+                    assertFalse(root.has("project"), "project should be omitted for default project");
+                    assertEquals("vm1", root.get("name").asText());
+                    assertEquals("DEV1-S", root.get("commercial_type").asText());
+                    assertEquals("41cce026-c90b-40cd-aead-a075a07196fb", root.get("image").asText());
+                    assertTrue(root.get("routed_ip_enabled").asBoolean());
+                    assertEquals(1, root.get("ip_ids").size());
+                    assertEquals("ip-1", root.get("ip_ids").get(0).asText());
+                    assertEquals("l_ssd", root.get("volumes").get("0").get("volume_type").asText());
+                    assertEquals("10000000000", root.get("volumes").get("0").get("size").asText());
+                    assertEquals(1, root.get("tags").size());
+                    assertEquals("On-Demand-Vpn", root.get("tags").get(0).asText());
+                } catch (Exception e) { fail(e); }
+            }
+        );
+
+        String id = client.create(new com.fathzer.odvpn.providers.utils.VPSCreationSettings("vm1", region, "DEV1-S", "ignored"), null);
+        assertEquals("srv-1/"+region+"/ip-1", id);
+
+        // 2) Specific project: project fields must be present
+        String projId = "proj-1";
+        String projUri = "https://api.scaleway.com/account/v3/projects/" + projId;
+        String projResponse = """
+        {"id":"proj-1","name":"Some Project","organization_id":"org-xyz"}
+        """;
+        setupMockResponse(projUri, projResponse);
+        client.setProjectId(projId);
+
+        setupMockResponse(ipsUri, "POST",
+            """
+            {"ip":{"id":"ip-2"}}
+            """,
+            body -> {
+                try {
+                    JsonNode root = om.readTree(body);
+                    assertEquals("routed_ipv6", root.get("type").asText());
+                    assertEquals(projId, root.get("projectId").asText());
+                } catch (Exception e) { fail(e); }
+            }
+        );
+        setupMockResponse(serversUri, "POST",
+            """
+            {"server":{"id":"srv-2"}}
+            """,
+            body -> {
+                try {
+                    JsonNode root = om.readTree(body);
+                    assertEquals(projId, root.get("project").asText());
+                    assertEquals(1, root.get("ip_ids").size());
+                    assertEquals("ip-2", root.get("ip_ids").get(0).asText());
+                } catch (Exception e) { fail(e); }
+            }
+        );
+
+        id = client.create(new com.fathzer.odvpn.providers.utils.VPSCreationSettings("vm2", region, "DEV1-S", "ignored"), null);
+        assertEquals("srv-2/"+region+"/ip-2", id);
+    }
+
+    @Test
+    void testDelete_callsServerAndIpDelete() {
+        String serverId = "srv-123";
+        String region = "fr-par-1";
+        String ipId = "ip-789";
+        String composedId = serverId + "/" + region + "/" + ipId;
+
+        // Expect DELETE on instances path (super.delete)
+        String deleteInstanceUri = "https://api.scaleway.com/instances/" + serverId;
+        setupMockResponse(deleteInstanceUri, "DELETE", "{}", null);
+
+        // Expect DELETE on region IP endpoint
+        String deleteIpUri = "https://api.scaleway.com/instance/v1/zones/" + region + "/ips/" + ipId;
+        setupMockResponse(deleteIpUri, "DELETE", "{}", null);
+
+        assertDoesNotThrow(() -> client.delete(composedId));
     }
 
     @Test
