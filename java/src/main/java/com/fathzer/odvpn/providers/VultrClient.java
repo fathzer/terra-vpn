@@ -18,10 +18,10 @@ public class VultrClient extends BasicVPSProviderClient {
     private static final String API_URL = "https://api.vultr.com/v2";
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record InstanceFullResponse(InstanceResponse instance) {}
+    private static record InstanceFullResponse(InstanceResponse instance) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record InstanceResponse(String id,
+    private static record InstanceResponse(String id,
         @JsonProperty("main_ip") String mainIp,
         @JsonProperty("power_status") String powerStatus,
         @JsonProperty("server_status") String serverStatus) {

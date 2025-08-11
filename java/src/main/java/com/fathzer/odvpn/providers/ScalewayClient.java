@@ -2,15 +2,19 @@ package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.fathzer.odvpn.providers.utils.VPSCreationSettings;
@@ -18,11 +22,22 @@ import com.fathzer.odvpn.repository.VPNConfig;
 
 public class ScalewayClient extends BasicVPSProviderClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record SshKey(String id, String name, @JsonProperty("organization_id") String organizationId, @JsonProperty("project_id") String projectId, boolean disabled) {}
+    static record SshKey(String id, String name, @JsonProperty("organization_id") String organizationId, @JsonProperty("project_id") String projectId, boolean disabled) {}
+
+    static record VPSId(String serverId, String region, String ipId) {
+        public static VPSId fromString(String id) {
+            final String[] ids = id.split("/");
+            return new VPSId(ids[0], ids[1], ids[2]);
+        }
+        public String toString() {
+            return serverId + "/" + region + "/" + ipId;
+        }
+    }
 
     private static final String API_URL = "https://api.scaleway.com";
     private static final Set<String> REGIONS;
 
+    private List<SshKey> sshKeys;
     private String projectId;
 
     static {
@@ -40,32 +55,43 @@ public class ScalewayClient extends BasicVPSProviderClient {
      * @throws IOException if an I/O error occurs
      */
     void setProjectId(String projectId) throws IOException {
-        if (projectId!=null && !projectId.trim().isEmpty()) {
-            final URI uri = URI.create(getRootUrl() + "/account/v3/projects/" + projectId);
-            try {
-                final String response = this.doRequest(this.newRequest(uri).build()).body();
-                @JsonIgnoreProperties(ignoreUnknown = true)
-                record Project(String id, String name, @JsonProperty("organization_id") String organizationId) {}
-                final Project project = this.objectMapper.readValue(response, Project.class);
-                if (project.id().equals(project.organizationId())) {
-                    // Project is the default one
-                    this.projectId = null;
-                } else {
-                    this.projectId = projectId;
-                }
-            } catch (ErrorResponseException e) {
-                String message;
-                if (e.getStatusCode() == 404) {
-                    message = "Unknown project ID " + projectId;
-                } else if (e.getStatusCode() == 400) {
-                    message = "Malformed project ID " + projectId;
-                } else {
-                    message = e.getMessage();
-                }
-                throw new IllegalArgumentException(message, e);
+        final String effectiveProjectId = projectId != null && projectId.trim().isEmpty() ? null : projectId;
+        // Scaleway strange logic does not allow to get projects list without the organization id
+        // But ssh keys do! So let use it to get the default project
+        final URI uri = URI.create(getRootUrl() + "/iam/v1alpha1/ssh-keys");
+        final String response = this.doRequest(this.newRequest(uri).build()).body();
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record SshKeyResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
+        // Filter project's keys
+        Predicate<SshKey> projectFilter = effectiveProjectId==null ? s -> s.organizationId().equals(s.projectId()) : s -> s.projectId().equals(effectiveProjectId);
+        this.sshKeys = this.objectMapper.readValue(response, SshKeyResponse.class).sshKeys().stream().filter(projectFilter).toList();
+        if (this.sshKeys.isEmpty()) {
+            if (effectiveProjectId==null) {
+                throw new IllegalArgumentException("Default project has no ssh keys");
+            } else {
+                this.checkProjectId(effectiveProjectId);
+                this.projectId = effectiveProjectId;
             }
         } else {
-            this.projectId = null;
+            this.projectId = this.sshKeys.get(0).projectId();
+        }
+    }
+
+    private void checkProjectId(String projectId) throws IOException {
+        final URI projectUri = URI.create(getRootUrl() + "/account/v3/projects/" + projectId);
+        try {
+            this.doRequest(this.newRequest(projectUri).build());
+
+        } catch (ErrorResponseException e) {
+            String message;
+            if (e.getStatusCode() == 404) {
+                message = "Unknown project ID " + projectId;
+            } else if (e.getStatusCode() == 400) {
+                message = "Malformed project ID " + projectId;
+            } else {
+                message = e.getMessage();
+            }
+            throw new IllegalArgumentException(message, e);
         }
     }
 
@@ -78,22 +104,9 @@ public class ScalewayClient extends BasicVPSProviderClient {
         return API_URL;
     }
 
-    private boolean matchesProjectId(SshKey sshKey) {
-        if (this.projectId==null) {
-            return sshKey.organizationId().equals(sshKey.projectId());
-        } else {
-            return this.projectId.equals(sshKey.projectId());
-        }
-    }
-
     @Override
     public String getSSHKeyId(String sshKey) throws IOException {
-        final URI uri = URI.create(getRootUrl() + "/iam/v1alpha1/ssh-keys");
-        final String response = this.doRequest(this.newRequest(uri).build()).body();
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record SshKeyResponse(@JsonProperty("ssh_keys") List<SshKey> sshKeys) {}
-        final List<SshKey> sshKeys = this.objectMapper.readValue(response, SshKeyResponse.class).sshKeys();
-        List<SshKey> projectKeys = sshKeys.stream().filter(this::matchesProjectId).filter(s -> s.name().equals(sshKey)).toList();
+        List<SshKey> projectKeys = this.sshKeys.stream().filter(s -> s.name().equals(sshKey)).toList();
         if (projectKeys.isEmpty()) {
             throw new IllegalArgumentException("Unknown key");
         } else {
@@ -141,7 +154,7 @@ public class ScalewayClient extends BasicVPSProviderClient {
     @Override
     public String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException {
         // Create IP address
-        record IPCreationRequest(@JsonInclude(JsonInclude.Include.NON_NULL) String projectId, String type) {}
+        record IPCreationRequest(String project, String type) {}
         //TODO Change address type to ipv4
         final String ipResponse = this.post(URI.create(getIpsURI(settings.region())), new IPCreationRequest(this.projectId, "routed_ipv6")); 
         final String ipId = this.objectMapper.readTree(ipResponse).get("ip").get("id").asText();
@@ -160,29 +173,52 @@ public class ScalewayClient extends BasicVPSProviderClient {
             this.projectId, settings.name(), settings.instanceType(), "41cce026-c90b-40cd-aead-a075a07196fb",
             false, true, List.of(ipId),
             Map.of("0", new Volume("l_ssd", "10000000000")), tags);
-        final String serverURI = getRegionURI(settings.region()) + "/servers";
-        final String response = this.post(URI.create(serverURI), request);
+        final String response = this.post(URI.create(getServerURI(settings.region())), request);
         final String serverId = this.objectMapper.readTree(response).get("server").get("id").asText();
 
         // Boot the VPS
-        this.post(URI.create(serverURI + "/" + serverId + "/action"), Map.of("action", "poweron"));
+        this.post(URI.create(getServerURI(settings.region(), serverId) + "/action"), Map.of("action", "poweron"));
 
         // Return the server ID and the IP ID
-        return serverId+"/"+settings.region()+"/"+ipId;
+        return new VPSId(serverId, settings.region(), ipId).toString();
+    }
+
+    private String getServerURI(String region) {
+        return getRegionURI(region) + "/servers";
+    }
+
+    private String getServerURI(String region, String serverId) {
+        return getServerURI(region) + "/" + serverId;
     }
 
     @Override
     public VPSState getState(String id) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+        final VPSId vpsId = VPSId.fromString(id);
+        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getServerURI(vpsId.region(), vpsId.serverId()))).build());
+System.out.println(response.body()); //TODO Remove
+        final JsonNode server = this.objectMapper.readTree(response.body()).get("server");
+        Status status = Status.STARTING;
+        String ip = null;
+        if (!server.isNull()) {
+            final String scalewayStatus = server.get("state").asText();
+            final JsonNode ipsNode = server.get("public_ips");
+            for (JsonNode ipNode : ipsNode) {
+                ip = ipNode.get("address").asText().trim();
+                System.out.println("  -> " + ip); //TODO Remove
+                if (ip.isEmpty()) {
+                    ip = null;
+                } else {
+                    status = "running".equals(scalewayStatus) ? Status.READY : Status.IP_READY;
+                }
+            }
+        }
+        return new VPSState(id, ip, status);
     }
 
     @Override
     public void delete(String id) throws IOException {
-        final String serverId = id.split("/")[0];
-        final String region = id.split("/")[1];
-        final String ipId = id.split("/")[2];
-        super.delete(serverId);
-        this.doRequest(this.newRequest(URI.create(getIpsURI(region) + ipId)).DELETE().build());
+        final VPSId vpsId = VPSId.fromString(id);
+        this.doRequest(this.newRequest(URI.create(getServerURI(vpsId.region(), vpsId.serverId()))).DELETE().build());
+        this.doRequest(this.newRequest(URI.create(getIpsURI(vpsId.region()) + vpsId.ipId())).DELETE().build());
     }
 }

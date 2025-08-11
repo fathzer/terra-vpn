@@ -98,6 +98,13 @@ public abstract class BasicVPSProviderClient extends AbstractVPSProviderClient {
         return "/instances";
     }
 
+    /**
+     * Creates a new instance.
+     * @param settings the settings for the instance
+     * @param vpnConfig the VPN configuration (could be usefull to apply firewall rules to allow only ssh and vpn ports)
+     * @return the instance ID
+     * @throws IOException if an I/O error occurs
+     */
     public abstract String create(VPSCreationSettings settings, VPNConfig vpnConfig) throws IOException;
 
     /**

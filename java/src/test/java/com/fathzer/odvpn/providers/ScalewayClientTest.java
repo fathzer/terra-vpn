@@ -10,6 +10,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
+    private static final String KEYS_URI = "https://api.scaleway.com/iam/v1alpha1/ssh-keys";
+    private static final String DEFAULT_SSH_KEYS_RESPONSE = """
+        { "ssh_keys": [
+            {"id":"k1","name":"mykey","organization_id":"org1","project_id":"org1","disabled":false},
+            {"id":"k2","name":"other","organization_id":"org1","project_id":"org1","disabled":false},
+            {"id":"k3","name":"disabled","organization_id":"org1","project_id":"org1","disabled":true},
+            {"id":"k4","name":"false-disabled","organization_id":"org1","project_id":"org1","disabled":false},
+            {"id":"k5","name":"false-disabled","organization_id":"org1","project_id":"org1","disabled":true},
+            {"id":"k6","name":"duplicated","organization_id":"org1","project_id":"org1","disabled":false},
+            {"id":"k7","name":"duplicated","organization_id":"org1","project_id":"org1","disabled":false},
+            {"id":"k8","name":"other-project","organization_id":"org1","project_id":"proj-other","disabled":false},
+            {"id":"k9","name":"other-project-disabled","organization_id":"org1","project_id":"proj-other","disabled":true}
+        ]}
+        """;
+
     @Override
     protected void validateHeaders(HttpRequest request) {
         assertEquals(TEST_TOKEN, request.headers().firstValue("X-Auth-Token").orElse(""));
@@ -22,6 +37,9 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
 
     @Test
     void testSetProjectId() throws Exception {
+        setupMockResponse(KEYS_URI, DEFAULT_SSH_KEYS_RESPONSE);
+
+        // Test for existing project with no keys
         String projectId = "abc-123"; // same as organization_id, triggers default logic
         String uri = "https://api.scaleway.com/account/v3/projects/" + projectId;
         String jsonResponse;
@@ -38,17 +56,13 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         client.setProjectId(projectId);
         assertEquals(projectId, client.getProjectId(), "Project ID should be set when valid");
 
-        // Test for null or empty project ID => project should be null
+        // Test for null or empty project ID => project should be default one
         client.setProjectId(" ");
-        assertNull(client.getProjectId(), "Project ID should be null when set to empty string");
-        // Reset project ID for next tests
-        client.setProjectId(projectId);
+        assertEquals("org1", client.getProjectId(), "Project ID should be default when set to empty string");
         client.setProjectId(null);
-        assertNull(client.getProjectId(), "Project ID should be null when set to null");
-        // Reset project ID for next tests
-        client.setProjectId(projectId);
+        assertEquals("org1", client.getProjectId(), "Project ID should be default when set to null");
 
-        // Test for default project => project should be null
+        // Test for existing project with no ssh keys => project should be accepted
         jsonResponse = """
         {
             "id":"abc-123",
@@ -58,7 +72,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         """;
         setupMockResponse(uri, jsonResponse);
         client.setProjectId(projectId);
-        assertNull(client.getProjectId(), "Project ID should be null for default project");
+        assertEquals(projectId, client.getProjectId(), "Project ID should be set when valid");
 
         // Test for unknown project => should throw IllegalArgumentException
         String responseBody = """
@@ -89,12 +103,69 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         setupMockResponse(uri, "GET", 400, responseBody, null);
         ex = assertThrows(IllegalArgumentException.class, () -> client.setProjectId(projectId));
         assertTrue(ex.getMessage().contains("Malformed project ID"));
+
+        // Test with no ssh key and default project
+        final String NoDefaultSshKeysResponse = """
+        { "ssh_keys": [
+            {"id":"k8","name":"other-project","organization_id":"org1","project_id":"proj-other","disabled":false}
+        ]}
+        """;
+        setupMockResponse(KEYS_URI, NoDefaultSshKeysResponse);
+        ex = assertThrows(IllegalArgumentException.class, () -> client.setProjectId(null));
+        assertTrue(ex.getMessage().contains("Default project has no ssh keys"));
+    }
+
+    @Test
+    void testGetSSHKeyId_allScenarios() throws Exception {
+        // 1) Default project (projectId == null) -> match where organization_id == project_id
+        String keysResponse = DEFAULT_SSH_KEYS_RESPONSE;
+        setupMockResponse(KEYS_URI, keysResponse);
+        client.setProjectId(null);
+        assertEquals("k1", client.getSSHKeyId("mykey"));
+        assertEquals("k4", client.getSSHKeyId("false-disabled"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("disabled"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("duplicated"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("other-project"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("unknown"));
+
+        // 2) Specific project set -> only match keys with that project_id and name
+        String projId = "proj-1";
+        String projUri = "https://api.scaleway.com/account/v3/projects/" + projId;
+        String projResponse = """
+        {"id":"proj-1","name":"Some Project","organization_id":"org-xyz"}
+        """;
+        setupMockResponse(projUri, projResponse);
+        keysResponse = keysResponse.replace("project_id\":\"org1", "project_id\":\""+projId);
+        setupMockResponse(KEYS_URI, keysResponse);
+        client.setProjectId(projId);
+        assertEquals("k1", client.getSSHKeyId("mykey"));
+        assertEquals("k4", client.getSSHKeyId("false-disabled"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("disabled"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("duplicated"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("other-project"));
+        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("unknown"));
+    }
+    @Test
+    void testCheckInstanceType_valid() {
+        String badRegion = "xx-bad-1";
+        // No HTTP mock needed; should fail on region validation before calling the API
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType(badRegion, "DEV1-S"));
+
+        String region = "fr-par-1";
+        String uri = "https://api.scaleway.com/instance/v1/zones/" + region + "/products/servers/availability?per_page=100";
+        String responseBody = """
+        { "servers": { "DEV1-S": { } } }
+        """;
+        setupMockResponse(uri, responseBody);
+        assertDoesNotThrow(() -> client.checkInstanceType(region, "DEV1-S"));
+        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType(region, "UNKNOWN-TYPE"));
     }
 
     @Test
     void testCreate() throws Exception {
         ObjectMapper om = new ObjectMapper();
         // Default project (projectId == null): project fields must be omitted
+        setupMockResponse(KEYS_URI, DEFAULT_SSH_KEYS_RESPONSE);
         client.setProjectId(null);
 
         String region = "fr-par-1";
@@ -109,8 +180,8 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
             body -> {
                 try {
                     JsonNode root = om.readTree(body);
-                    assertEquals("routed_ipv6", root.get("type").asText());
-                    assertFalse(root.has("projectId"), "projectId should be omitted for default project");
+                    assertEquals("routed_ipv6", root.path("type").asText());
+                    assertEquals("org1", root.path("project").asText(), "bad projectId for default project in IP creation request");
                 } catch (Exception e) { fail(e); }
             }
         );
@@ -120,19 +191,20 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
             """,
             body -> {
                 try {
+                    System.out.println(body);
                     JsonNode root = om.readTree(body);
-                    assertFalse(root.has("project"), "project should be omitted for default project");
-                    assertEquals("vm1", root.get("name").asText());
-                    assertEquals("DEV1-S", root.get("commercial_type").asText());
-                    assertEquals("41cce026-c90b-40cd-aead-a075a07196fb", root.get("image").asText());
-                    assertFalse(root.get("dynamic_ip_required").asBoolean());
-                    assertTrue(root.get("routed_ip_enabled").asBoolean());
-                    assertEquals(1, root.get("ip_ids").size());
-                    assertEquals("ip-1", root.get("ip_ids").get(0).asText());
-                    assertEquals("l_ssd", root.get("volumes").get("0").get("volume_type").asText());
-                    assertEquals("10000000000", root.get("volumes").get("0").get("size").asText());
-                    assertEquals(1, root.get("tags").size());
-                    assertEquals("On-Demand-Vpn", root.get("tags").get(0).asText());
+                    assertEquals("org1", root.path("project").asText(), "bad projectId for default project in VPS creation request");
+                    assertEquals("vm1", root.path("name").asText());
+                    assertEquals("DEV1-S", root.path("commercial_type").asText());
+                    assertEquals("41cce026-c90b-40cd-aead-a075a07196fb", root.path("image").asText());
+                    assertFalse(root.path("dynamic_ip_required").asBoolean());
+                    assertTrue(root.path("routed_ip_enabled").asBoolean());
+                    assertEquals(1, root.path("ip_ids").size());
+                    assertEquals("ip-1", root.path("ip_ids").get(0).asText());
+                    assertEquals("l_ssd", root.path("volumes").get("0").get("volume_type").asText());
+                    assertEquals("10000000000", root.path("volumes").get("0").get("size").asText());
+                    assertEquals(1, root.path("tags").size());
+                    assertEquals("On-Demand-Vpn", root.path("tags").get(0).asText());
                 } catch (Exception e) { fail(e); }
             }
         );
@@ -140,7 +212,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         setupMockResponse(serversUri + "/srv-1/action", "POST", "{}", body -> {
             try {
                 JsonNode root = om.readTree(body);
-                assertEquals("poweron", root.get("action").asText());
+                assertEquals("poweron", root.path("action").asText());
             } catch (Exception e) { fail(e); }
         });
 
@@ -163,8 +235,8 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
             body -> {
                 try {
                     JsonNode root = om.readTree(body);
-                    assertEquals("routed_ipv6", root.get("type").asText());
-                    assertEquals(projId, root.get("projectId").asText());
+                    assertEquals("routed_ipv6", root.path("type").asText());
+                    assertEquals(projId, root.path("project").asText());
                 } catch (Exception e) { fail(e); }
             }
         );
@@ -175,9 +247,9 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
             body -> {
                 try {
                     JsonNode root = om.readTree(body);
-                    assertEquals(projId, root.get("project").asText());
-                    assertEquals(1, root.get("ip_ids").size());
-                    assertEquals("ip-2", root.get("ip_ids").get(0).asText());
+                    assertEquals(projId, root.path("project").asText());
+                    assertEquals(1, root.path("ip_ids").size());
+                    assertEquals("ip-2", root.path("ip_ids").get(0).asText());
                 } catch (Exception e) { fail(e); }
             }
         );
@@ -194,7 +266,7 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         String composedId = serverId + "/" + region + "/" + ipId;
 
         // Expect DELETE on instances path (super.delete)
-        String deleteInstanceUri = "https://api.scaleway.com/instances/" + serverId;
+        String deleteInstanceUri = "https://api.scaleway.com/instance/v1/zones/" + region + "/servers/" + serverId;
         setupMockResponse(deleteInstanceUri, "DELETE", "{}", null);
 
         // Expect DELETE on region IP endpoint
@@ -202,65 +274,5 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         setupMockResponse(deleteIpUri, "DELETE", "{}", null);
 
         assertDoesNotThrow(() -> client.delete(composedId));
-    }
-
-    @Test
-    void testCheckInstanceType_valid() {
-        String badRegion = "xx-bad-1";
-        // No HTTP mock needed; should fail on region validation before calling the API
-        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType(badRegion, "DEV1-S"));
-
-        String region = "fr-par-1";
-        String uri = "https://api.scaleway.com/instance/v1/zones/" + region + "/products/servers/availability?per_page=100";
-        String responseBody = """
-        { "servers": { "DEV1-S": { } } }
-        """;
-        setupMockResponse(uri, responseBody);
-        assertDoesNotThrow(() -> client.checkInstanceType(region, "DEV1-S"));
-        assertThrows(IllegalArgumentException.class, () -> client.checkInstanceType(region, "UNKNOWN-TYPE"));
-    }
-
-    @Test
-    void testGetSSHKeyId_allScenarios() throws Exception {
-        final String keysUri = "https://api.scaleway.com/iam/v1alpha1/ssh-keys";
-
-        // 1) Default project (projectId == null) -> match where organization_id == project_id
-        String keysResponse = """
-        { "ssh_keys": [
-            {"id":"k1","name":"mykey","organization_id":"org1","project_id":"org1","disabled":false},
-            {"id":"k2","name":"other","organization_id":"org1","project_id":"org1","disabled":false},
-            {"id":"k3","name":"disabled","organization_id":"org1","project_id":"org1","disabled":true},
-            {"id":"k4","name":"false-disabled","organization_id":"org1","project_id":"org1","disabled":false},
-            {"id":"k5","name":"false-disabled","organization_id":"org1","project_id":"org1","disabled":true},
-            {"id":"k6","name":"duplicated","organization_id":"org1","project_id":"org1","disabled":false},
-            {"id":"k7","name":"duplicated","organization_id":"org1","project_id":"org1","disabled":false},
-            {"id":"k8","name":"other-project","organization_id":"org1","project_id":"proj-other","disabled":false}
-        ]}
-        """;
-        setupMockResponse(keysUri, keysResponse);
-        client.setProjectId(null);
-        assertEquals("k1", client.getSSHKeyId("mykey"));
-        assertEquals("k4", client.getSSHKeyId("false-disabled"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("disabled"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("duplicated"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("other-project"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("unknown"));
-
-        // 2) Specific project set -> only match keys with that project_id and name
-        String projId = "proj-1";
-        String projUri = "https://api.scaleway.com/account/v3/projects/" + projId;
-        String projResponse = """
-        {"id":"proj-1","name":"Some Project","organization_id":"org-xyz"}
-        """;
-        setupMockResponse(projUri, projResponse);
-        client.setProjectId(projId);
-        keysResponse = keysResponse.replace("project_id\":\"org1", "project_id\":\""+projId);
-        setupMockResponse(keysUri, keysResponse);
-        assertEquals("k1", client.getSSHKeyId("mykey"));
-        assertEquals("k4", client.getSSHKeyId("false-disabled"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("disabled"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("duplicated"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("other-project"));
-        assertThrows(IllegalArgumentException.class, () -> client.getSSHKeyId("unknown"));
     }
 }

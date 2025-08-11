@@ -19,11 +19,11 @@ import com.fathzer.odvpn.utils.IOLambdas.IOFunction;
 
 public class DigitalOceanClient extends BasicVPSProviderClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record Region(String slug, boolean available, List<String> sizes) {}
+    private static record Region(String slug, boolean available, List<String> sizes) {}
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record RegionsResponse(@JsonProperty("regions") List<Region> regions) {}
-    private record FirewallSource(List<String> addresses) {}
-    private record FirewallRule(String protocol, String ports, List<FirewallSource> sources) {}
+    private static record RegionsResponse(@JsonProperty("regions") List<Region> regions) {}
+    private static record FirewallSource(List<String> addresses) {}
+    private static record FirewallRule(String protocol, String ports, List<FirewallSource> sources) {}
 
     private static final String API_URL = "https://api.digitalocean.com/v2";
 
