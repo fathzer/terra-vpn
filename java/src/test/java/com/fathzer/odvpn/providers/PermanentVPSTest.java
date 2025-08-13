@@ -1,14 +1,16 @@
 package com.fathzer.odvpn.providers;
 
-import com.fathzer.odvpn.providers.PermanentVPS.PermanentSettings;
+import static com.fathzer.odvpn.json.VPSProviderTestUtils.deserialize;
+import static org.junit.jupiter.api.Assertions.*;
 
+import com.fathzer.odvpn.providers.PermanentVPS.PermanentSettings;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.VPSProvider;
 import com.fathzer.odvpn.repository.VPNConfig;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class PermanentVPSTest {
 
@@ -54,11 +56,44 @@ class PermanentVPSTest {
     }
 
     @Test
-    void testGetSSHUser_customAndDefault() {
+    void testGetSSHUserCustomAndDefault() {
         PermanentVPS vps = new PermanentVPS();
         vps.setSettings(new PermanentSettings("1.2.3.4", "customuser"));
         assertEquals("customuser", vps.getSSHUser());
         vps.setSettings(new PermanentSettings("1.2.3.4", null));
         assertEquals("root", vps.getSSHUser());
+    }
+
+    @Test
+    void testConfigDeserialization() throws IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+        String json = """
+        {
+            "ip": "1.2.3.4",
+            "sshUser": "customuser"
+        }
+        """;
+        PermanentSettings settings = mapper.readValue(json, PermanentSettings.class);
+        assertEquals("1.2.3.4", settings.ip());
+        assertEquals("customuser", settings.sshUser());
+
+        json = """
+            {
+                "ip": "1.2.3.4"
+            }
+            """;
+        settings = mapper.readValue(json, PermanentSettings.class);
+        assertEquals("1.2.3.4", settings.ip());
+
+        json = """
+            {
+            "providerId": "permanent",
+            "config": {
+                "ip": "1.2.3.4"
+                }
+            }
+            """;
+        PermanentVPS vps2 = deserialize(mapper, json);
+        assertEquals("1.2.3.4", vps2.getSettings().ip());
     }
 }

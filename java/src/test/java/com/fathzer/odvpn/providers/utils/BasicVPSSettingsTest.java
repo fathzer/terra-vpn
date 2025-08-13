@@ -1,7 +1,12 @@
 package com.fathzer.odvpn.providers.utils;
 
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.io.IOException;
 
 class BasicVPSSettingsTest {
     @Test
@@ -50,5 +55,23 @@ class BasicVPSSettingsTest {
         settings.setSshUser(null);
         assertEquals("odvpn", settings.getSshKeyName());
         assertEquals("root", settings.getSshUser());
+    }
+
+    @Test
+    void testConfigDeserialization() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        String json = """
+        {
+            "region": "us-east-1",
+            "instanceType": "t2.micro",
+            "sshKeyName": "customKey",
+            "sshUser": "admin"
+        }
+        """;
+        BasicVPSSettings settings = mapper.readValue(json, BasicVPSSettings.class);
+        assertEquals("us-east-1", settings.getRegion());
+        assertEquals("t2.micro", settings.getInstanceType());
+        assertEquals("customKey", settings.getSshKeyName());
+        assertEquals("admin", settings.getSshUser());
     }
 }

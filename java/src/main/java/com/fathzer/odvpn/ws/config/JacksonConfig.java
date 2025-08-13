@@ -17,7 +17,6 @@ public class JacksonConfig {
 
     @Bean
     public Jackson2ObjectMapperBuilder jackson2ObjectMapperBuilder() {
-        return new Jackson2ObjectMapperBuilder()
-                .modulesToInstall(customSerializationModule());
+        return new Jackson2ObjectMapperBuilder().modulesToInstall(customSerializationModule());
     }
 }

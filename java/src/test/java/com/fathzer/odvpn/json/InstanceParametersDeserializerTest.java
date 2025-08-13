@@ -2,7 +2,6 @@ package com.fathzer.odvpn.json;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -22,17 +21,37 @@ class InstanceParametersDeserializerTest {
     
     @Test
     void test() throws Exception {
-        try (InputStream is = getClass().getResourceAsStream("configDigitalOceanAfraid.json")) {
-            InstanceParameters params = mapper.readValue(is, InstanceParameters.class);
-            assertEquals("DigitalOceanVPS", params.vps().getClass().getSimpleName());
-            BasicTokenAuthVPSSettings vpsSettings = (BasicTokenAuthVPSSettings) params.vps().getSettings();
-            assertEquals("digitalOceanToken", vpsSettings.getToken());
-            assertEquals("lon1", vpsSettings.getRegion("zone"));
-            assertEquals("AfraidDDNS", params.ddns().getClass().getSimpleName());
-            AfraidDDNS ddns = (AfraidDDNS) params.ddns();
-            assertEquals("afraidToken", ddns.getSettings().token());
-            assertEquals("terravpn.mydomain.com", params.vpn().hostname());
-            assertEquals(Set.of("86.54.11.100", "86.54.11.200"), new HashSet<>(params.vpn().dnsServers()));
+        String json = """
+        {
+            "vps" : {
+                "providerId": "digitalOcean",
+                "config": {
+                    "token": "digitalOceanToken",
+                    "instanceType": "s-1vcpu-1gb",
+                    "region": "lon1"
+                }
+            },
+            "ddns": {
+                "providerId": "afraid",
+                "config": {
+                    "token": "afraidToken"
+                }
+            },
+            "vpn": {
+                "hostname": "terravpn.mydomain.com",
+                "dnsServers": ["86.54.11.100","86.54.11.200"]
+            }
         }
+        """;
+        InstanceParameters params = mapper.readValue(json, InstanceParameters.class);
+        assertEquals("DigitalOceanVPS", params.vps().getClass().getSimpleName());
+        BasicTokenAuthVPSSettings vpsSettings = (BasicTokenAuthVPSSettings) params.vps().getSettings();
+        assertEquals("digitalOceanToken", vpsSettings.getToken());
+        assertEquals("lon1", vpsSettings.getRegion("zone"));
+        assertEquals("AfraidDDNS", params.ddns().getClass().getSimpleName());
+        AfraidDDNS ddns = (AfraidDDNS) params.ddns();
+        assertEquals("afraidToken", ddns.getSettings().token());
+        assertEquals("terravpn.mydomain.com", params.vpn().hostname());
+        assertEquals(Set.of("86.54.11.100", "86.54.11.200"), new HashSet<>(params.vpn().dnsServers()));
     }
 }
