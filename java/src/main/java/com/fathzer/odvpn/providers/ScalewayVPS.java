@@ -1,7 +1,6 @@
 package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 
 import com.fathzer.odvpn.VPSProvider;
@@ -44,14 +43,12 @@ public class ScalewayVPS extends BasicVPSProvider<ScalewaySettings> {
     }
 
     @Override
-    public List<String> checkConfiguration() throws IOException {
-        final List<String> errors = new LinkedList<>();
+    protected List<String> doExtraCheck(BasicVPSProviderClient client) throws IOException {
         try {
-            ((ScalewayClient) getClient()).setProjectId(settings.getProjectId());
+            ((ScalewayClient) client).setProjectId(getSettings().getProjectId());
+            return List.of();
         } catch (IllegalArgumentException e) {
-            errors.add(e.getMessage());
+            return List.of(e.getMessage());
         }
-        errors.addAll(super.checkConfiguration());
-        return errors;
     }
 }

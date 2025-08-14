@@ -33,6 +33,14 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
         return resolve(settings.getSshKeyName());
     }
 
+    protected String getRegion() {
+        return settings.getRegion(getDefaultRegion());
+    }
+
+    protected String getInstanceType() {
+        return settings.getInstanceType(getDefaultInstanceType());
+    }
+
     protected abstract String getDefaultRegion();
 
     protected abstract String getDefaultInstanceType();
@@ -53,6 +61,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
         }
 
         try (BasicVPSProviderClient client = getClient()) {
+            errors.addAll(doExtraCheck(client));
             // Check if the SSH key exists
             try {
                 client.getSSHKeyId(sshKeyName);
@@ -63,7 +72,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
                 errors.add(e.getMessage());
             }
             // Check if region exists
-            String region = settings.getRegion(getDefaultRegion());
+            String region = getRegion();
             try {
                 client.checkRegion(region);
             } catch (IllegalArgumentException e) {
@@ -71,12 +80,22 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
             }
             // Check if instance type exists in the region
             try {
-                client.checkInstanceType(region, settings.getInstanceType(getDefaultInstanceType()));
+                client.checkInstanceType(region, getInstanceType());
             } catch (IllegalArgumentException e) {
                 errors.add(e.getMessage());
             }
         }
         return errors;
+    }
+
+    /** Performs additional checks on the configuration.
+     * <br>This method is called by {@link #checkConfiguration()} after the basic checks (token, SSH key name are not null or empty) and before any call to the client.
+     * @param client the client to use
+     * @return A list of configuration errors, or an empty list if the configuration is valid
+     * @throws IOException if an I/O error occurs
+     */
+    protected List<String> doExtraCheck(BasicVPSProviderClient client) throws IOException {
+        return new LinkedList<>();
     }
 
     @Override

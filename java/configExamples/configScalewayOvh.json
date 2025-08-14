@@ -1,0 +1,22 @@
+{
+    "vps": {
+        "providerId": "scaleway",
+        "config": {
+            "token": "${SCALEWAY_SECRET_KEY}",
+            "projectId": "odvpn"
+        }
+    },
+    "ddns": {
+        "providerId": "ovh",
+        "config": {
+            "user": "astesana.net-foreign",
+            "password": "${OVH_DDNS_PWD}"
+        }
+    },
+    "vpn": {
+        "hostname": "foreign.astesana.net",
+        "dnsServers": ["86.54.11.100","86.54.11.200"],
+        "protocol": "tcp",
+        "port": 443
+    }
+}
