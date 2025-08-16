@@ -43,6 +43,13 @@ public class ScalewayVPS extends BasicVPSProvider<ScalewaySettings> {
     }
 
     @Override
+    protected void prepare(BasicVPSProviderClient client, Operation operation) throws IOException {
+        if (operation == Operation.CREATE) {
+            ((ScalewayClient) client).setProjectId(getSettings().getProjectId());
+        }
+    }
+
+    @Override
     protected List<String> doExtraCheck(BasicVPSProviderClient client) throws IOException {
         try {
             ((ScalewayClient) client).setProjectId(getSettings().getProjectId());

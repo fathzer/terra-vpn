@@ -17,6 +17,11 @@ import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.ErrorResponse
 public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> extends VPSProvider<T> {
     private static final Logger logger = LoggerFactory.getLogger(BasicVPSProvider.class);
 
+    protected enum Operation {
+        CREATE,
+        DELETE;
+    }
+
     protected abstract BasicVPSProviderClient getClient();
 
     @SuppressWarnings("unchecked")
@@ -98,9 +103,21 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
         return new LinkedList<>();
     }
 
+    /**
+     * Performs additional preparation on the client.
+     * <br>This method is called by {@link #createVPS(VPNConfig, Consumer)} before the VPS is created.
+     * <br>This default implementation does nothing.
+     * @param client the client to use
+     * @param operation the operation to perform
+     * @throws IOException if an I/O error occurs
+     */
+    protected void prepare(BasicVPSProviderClient client, Operation operation) throws IOException {
+    }
+
     @Override
     public VPSState createVPS(VPNConfig vpnConfig, Consumer<VPSState> progress) throws IOException {
         try (BasicVPSProviderClient client = getClient()) {
+            prepare(client, Operation.CREATE);
             final String sshKeyId = client.getSSHKeyId(getSshKeyName());
             final String id = client.create(new VPSCreationSettings(getInstanceName(), settings.getRegion(getDefaultRegion()),
                 settings.getInstanceType(getDefaultInstanceType()), sshKeyId), vpnConfig);
@@ -141,6 +158,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
     @Override
     public void deleteVPS(String id) throws IOException {
         try (BasicVPSProviderClient client = getClient()) {
+            prepare(client, Operation.DELETE);
             client.delete(id);
             if (logger.isInfoEnabled()) logger.info("{} instance {} deleted", this.name(), id);
         }
