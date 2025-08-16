@@ -114,8 +114,8 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
      * @param request the request
      * @return the response
      * @throws IOException if an I/O error occurs. The precise type of exception depends on the implementation of
-     *  @link{#getAuthenticationException(HttpResponse)}, @link{#getErrorResponseException(HttpResponse)},
-     *  @link{#getServerErrorException(HttpResponse)}.
+     *  {@link #getAuthenticationException(HttpResponse)}, {@link #getErrorResponseException(HttpResponse)},
+     *  {@link #getServerErrorException(HttpResponse)}.
      */
     public HttpResponse<String> doRequest(HttpRequest request) throws IOException {
         try {

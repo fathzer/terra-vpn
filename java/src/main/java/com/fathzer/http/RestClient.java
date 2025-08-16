@@ -78,9 +78,6 @@ public abstract class RestClient {
     
     /**
      * Converts a request body into a BodyPublisher.
-     * Handles both String and object bodies, delegating to {@link #serializeBody(Object)}
-     * for non-String objects.
-     *
      * @param request the request containing the body to convert
      * @return a BodyPublisher for the request body
      * @throws IOException if there is an error during serialization
