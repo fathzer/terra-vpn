@@ -45,7 +45,7 @@ public abstract class AbstractVPSProviderClient implements AutoCloseable {
     
 
     public String execute(Request request) throws IOException {
-        return this.getRestClient().execute(request, String.class);
+        return this.getRestClient().execute(request, String.class).body();
     }
 
     /**

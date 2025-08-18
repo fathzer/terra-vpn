@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +17,7 @@ import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.http.Request;
 import com.fathzer.http.RequestDecorator;
+import com.fathzer.http.Response;
 
 class BasicVPSProviderClientTest {
 
@@ -78,7 +78,7 @@ class BasicVPSProviderClientTest {
     }
     
     @Mock
-    private HttpResponse<String> httpResponse;
+    private Response<String> httpResponse;
     private TestClient testClient;
     private Request lastRequest;
 

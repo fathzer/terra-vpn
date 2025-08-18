@@ -1,11 +1,9 @@
 package com.fathzer.odvpn.providers;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 import java.io.UncheckedIOException;
 import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.http.Request;
+import com.fathzer.http.Response;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
 /**
@@ -26,7 +25,7 @@ public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient
 
     protected T client;
     private record RequestKey(String uri, String method) {}
-    private record ResponseData(HttpResponse<String> response, Consumer<String> requestBodyCheckConsumer) {}
+    private record ResponseData(Response<String> response, Consumer<String> requestBodyCheckConsumer) {}
     private Map<RequestKey, ResponseData> mockResponses = new HashMap<>();
 
     protected abstract Class<T> getClientClass();
@@ -46,7 +45,7 @@ public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient
         client.getRestClient().withRequestSender(this::send);
     }
     
-    private HttpResponse<String> send(HttpClient client, Request request) {
+    private Response<String> send(HttpClient client, Request request) {
     	String reqUri = request.getUri().toString();
         String reqMethod = request.getMethod().name();
         validateHeaders(request);
@@ -82,10 +81,7 @@ public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient
      * @param requestBodyCheckConsumer A consumer that checks the request body JSON
      */
     protected void setupMockResponse(String uri, String method, int statusCode, String responseBody, Consumer<String> requestBodyCheckConsumer) {
-        @SuppressWarnings("unchecked")
-		HttpResponse<String> mockResponse = mock(HttpResponse.class);
-        when(mockResponse.statusCode()).thenReturn(statusCode);
-        when(mockResponse.body()).thenReturn(responseBody);
+		Response<String> mockResponse = new Response<>(statusCode, responseBody, new HashMap<>());
         mockResponses.put(new RequestKey(uri, method.toUpperCase()), new ResponseData(mockResponse, requestBodyCheckConsumer));
     }
 

@@ -1,7 +1,6 @@
 package com.fathzer.http;
 
 import java.io.IOException;
-import java.net.http.HttpResponse;
 import java.util.Objects;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -18,7 +17,7 @@ public abstract class RequestException extends IOException {
      */
     public static class ClientErrorException extends RequestException {
         private static final long serialVersionUID = 1L;
-        public ClientErrorException(Request request, HttpResponse<String> response) {
+        public ClientErrorException(Request request, Response<String> response) {
             super(request, response);
         }
     }
@@ -29,7 +28,7 @@ public abstract class RequestException extends IOException {
     @SuppressWarnings("java:S110")
     public static class AuthenticationException extends ClientErrorException {
         private static final long serialVersionUID = 1L;
-        public AuthenticationException(Request request, HttpResponse<String> response) {
+        public AuthenticationException(Request request, Response<String> response) {
             super(request, response);
         }
     }
@@ -39,15 +38,15 @@ public abstract class RequestException extends IOException {
      */
     public static class ServerErrorException extends RequestException {
         private static final long serialVersionUID = 1L;
-        public ServerErrorException(Request request, HttpResponse<String> response) {
+        public ServerErrorException(Request request, Response<String> response) {
             super(request, response);
         }
     }
     
     private final transient Request request;
-    private final transient HttpResponse<String> response;
+    private final transient Response<String> response;
 
-    protected RequestException(Request request, HttpResponse<String> response) {
+    protected RequestException(Request request, Response<String> response) {
         super(buildMessage(request, response));
         this.request = request;
         this.response = response;
@@ -60,15 +59,15 @@ public abstract class RequestException extends IOException {
     public Request getRequest() {
         return this.request;
     }
-    public HttpResponse<String> getResponse() {
+    public Response<String> getResponse() {
         return this.response;
     }
 
-    protected String getErrorMessage(HttpResponse<String> response) {
-        return response.request().method() + "-" + response.uri() + " - " + response.body();
+    protected String getErrorMessage() {
+        return request.getMethod() + "-" + request.getUri() + " - " + response.body();
     }
     
-    private static String buildMessage(Request request, HttpResponse<String> response) {
+    private static String buildMessage(Request request, Response<String> response) {
         Objects.requireNonNull(request);
         Objects.requireNonNull(response);
         final StringBuilder sb = new StringBuilder();

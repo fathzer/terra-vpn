@@ -34,7 +34,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 public class RestClient implements AutoCloseable {
     @FunctionalInterface
     public interface RequestSender {
-        HttpResponse<String> send(HttpClient httpClient, Request request) throws IOException;
+        Response<String> send(HttpClient httpClient, Request request) throws IOException;
     }
 
     /**
@@ -122,7 +122,7 @@ public class RestClient implements AutoCloseable {
      * @throws RequestException if the server returns an error response
      * @throws NullPointerException if request is null
      */
-    private HttpResponse<String> send(HttpClient httpClient, Request request) throws IOException {
+    private Response<String> send(HttpClient httpClient, Request request) throws IOException {
         // Build the request
         Builder requestBuilder = HttpRequest.newBuilder().uri(request.getUri()).timeout(Duration.ofSeconds(30));
 
@@ -148,7 +148,7 @@ public class RestClient implements AutoCloseable {
             iioe.initCause(e);
             throw iioe;
         }
-        return response;
+        return Response.from(response);
     }
 
     /**
@@ -157,20 +157,27 @@ public class RestClient implements AutoCloseable {
      * @param <T> the type of the response object
      * @param request the request to execute
      * @param responseType the Class object representing the expected response type
-     * @return the deserialized response body
+     * @return the deserialized response
      * @throws IOException if there is an I/O error or the response cannot be deserialized
      * @throws RequestException if the server returns an error response
      * @throws NullPointerException if request or responseType is null
      */
     @SuppressWarnings("unchecked")
-    public <T> T execute(Request request, Class<T> responseType) throws IOException {
+    public <T> Response<T> execute(Request request, Class<T> responseType) throws IOException {
         // Apply decorators
         for (RequestDecorator decorator : requestDecorators) {
             request = decorator.decorate(request);
         }
-        final HttpResponse<String> response = requestSender.send(httpClient, request);
+        final Response<String> response = requestSender.send(httpClient, request);
         check(request, response);
-        return responseType == String.class ? (T) response.body() : deserializeResponse(response.body(), responseType);
+        final String responseBody = response.body();
+        final T body;
+        if (responseBody==null) {
+        	body = null;
+        } else {
+        	body = responseType == String.class ? (T) response.body() : deserializeResponse(responseBody, responseType);
+        }
+        return new Response<>(response.statusCode(), body, response.headers());
     }
 
     /**
@@ -205,7 +212,7 @@ public class RestClient implements AutoCloseable {
      * @throws RequestException if the server returns an error response
      * @throws NullPointerException if request or response is null
      */
-    protected void check(Request request, HttpResponse<String> response) throws IOException {
+    protected void check(Request request, Response<String> response) throws IOException {
         Objects.requireNonNull(request);
         Objects.requireNonNull(response);
         if (response.statusCode() == 401 || response.statusCode() == 403) {
