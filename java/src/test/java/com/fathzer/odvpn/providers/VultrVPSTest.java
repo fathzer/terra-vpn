@@ -1,7 +1,6 @@
 package com.fathzer.odvpn.providers;
 
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
-import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,9 +25,10 @@ class VultrVPSTest {
 
     @Test
     void testGetClient() {
-        VultrVPS vps = new VultrVPS();
-        vps.setSettings(new BasicTokenAuthVPSSettings());
-        BasicVPSProviderClient client = vps.getClient();
-        assertNotNull(client);
+        final VultrVPS vps = new VultrVPS();
+        final BasicTokenAuthVPSSettings settings = new BasicTokenAuthVPSSettings();
+        settings.setToken("token");
+		vps.setSettings(settings);
+        assertNotNull(vps.getClient());
     }
 }

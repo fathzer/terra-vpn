@@ -15,7 +15,7 @@ public enum Method {
     /** Checks if the request sent with this method can have a body
      * @return true if the request sent with this method can have a body
      */
-    public boolean hasBody() {
+    boolean hasBody() {
         return hasBody;
     }
 }

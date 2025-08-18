@@ -10,9 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.http.RequestException.AuthenticationException;
+import com.fathzer.http.RequestException.ClientErrorException;
 import com.fathzer.odvpn.VPSProvider;
-import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.AuthenticationException;
-import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.ErrorResponseException;
 
 public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> extends VPSProvider<T> {
     private static final Logger logger = LoggerFactory.getLogger(BasicVPSProvider.class);
@@ -147,7 +147,7 @@ public abstract class BasicVPSProvider<T extends BasicTokenAuthVPSSettings> exte
     public boolean exists(String id) throws IOException {
         try (BasicVPSProviderClient client = getClient()) {
             return !client.getState(id).status().equals(Status.STOPPED);
-        } catch (ErrorResponseException e) {
+        } catch (ClientErrorException e) {
             if (e.getStatusCode() == 404) {
                 return false;
             }

@@ -1,7 +1,6 @@
 package com.fathzer.odvpn.providers;
 
 import com.fathzer.odvpn.providers.utils.BasicTokenAuthVPSSettings;
-import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 import com.fathzer.odvpn.repository.VPNConfig;
 import com.fathzer.odvpn.ssh.Ssh;
 import org.junit.jupiter.api.Test;
@@ -32,10 +31,10 @@ class DigitalOceanVPSTest {
 
     @Test
     void testGetClient() {
-        DigitalOceanVPS vps = new DigitalOceanVPS();
-        vps.setSettings(new BasicTokenAuthVPSSettings());
-        BasicVPSProviderClient client = vps.getClient();
-        assertNotNull(client);
+        final DigitalOceanVPS vps = new DigitalOceanVPS();
+        final BasicTokenAuthVPSSettings settings = new BasicTokenAuthVPSSettings();
+        settings.setToken("token");
+		vps.setSettings(settings);        assertNotNull(vps.getClient());
     }
 
     @Test

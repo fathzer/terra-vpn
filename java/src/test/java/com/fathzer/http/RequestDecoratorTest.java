@@ -2,27 +2,20 @@ package com.fathzer.http;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpRequest.Builder;
 import java.util.Base64;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 class RequestDecoratorTest {
-    private static final URI TEST_URI = URI.create("https://example.com/api");
-    private static final Request TEST_REQUEST = new Request(TEST_URI, Method.GET);
+    private static final String TEST_URI = "https://example.com/api";
     
     @Test
     void testBearerAuth() {
         String token = "test-token-123";
-        RequestDecorator decorator = RequestDecorator.bearerAuth(token);
-        
-        Builder builder = HttpRequest.newBuilder().uri(TEST_URI);
-        Builder decorated = decorator.decorate(builder, TEST_REQUEST);
-        
-        HttpRequest request = decorated.build();
-        assertEquals("Bearer " + token, request.headers().firstValue("Authorization").orElse(null));
+        Request decorated = new Request(TEST_URI);
+        assertSame(decorated, RequestDecorator.bearerAuth(token).decorate(decorated));
+        assertEquals("Bearer " + token, decorated.getHeaders().get("Authorization").get(0));
     }
     
     @Test
@@ -31,50 +24,42 @@ class RequestDecoratorTest {
         String password = "testPass";
         String expected = "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
         
-        RequestDecorator decorator = RequestDecorator.basicAuth(username, password);
-        
-        Builder builder = HttpRequest.newBuilder().uri(TEST_URI);
-        Builder decorated = decorator.decorate(builder, TEST_REQUEST);
-        
-        HttpRequest request = decorated.build();
-        assertEquals(expected, request.headers().firstValue("Authorization").orElse(null));
+        Request decorated = RequestDecorator.basicAuth(username, password).decorate(new Request(TEST_URI));
+        assertEquals(expected, decorated.getHeaders().get("Authorization").get(0));
     }
     
     @Test
     void testProducesJson() {
-        RequestDecorator decorator = RequestDecorator.producesJson();
-        
-        Builder builder = HttpRequest.newBuilder().uri(TEST_URI);
-        Builder decorated = decorator.decorate(builder, TEST_REQUEST);
-        
-        HttpRequest request = decorated.build();
-        assertEquals("application/json", request.headers().firstValue("Accept").orElse(null));
+        Request request = new Request(TEST_URI);
+        RequestDecorator decorator = RequestDecorator.acceptJson();
+        Request decorated = decorator.decorate(request);
+        assertEquals("application/json", decorated.getHeaders().get("Accept").get(0));
     }
     
     @Test
-    void testConsumesJson() {
-        RequestDecorator decorator = RequestDecorator.consumesJson();
+    void testSendJson() {
+        RequestDecorator decorator = RequestDecorator.sendJson();
         
-        Builder builder = HttpRequest.newBuilder().uri(TEST_URI);
-        Builder decorated = decorator.decorate(builder, TEST_REQUEST);
-        
-        HttpRequest request = decorated.build();
-        assertEquals("application/json", request.headers().firstValue("Content-Type").orElse(null));
+        Request decorated = decorator.decorate(new Request(TEST_URI));
+        assertNull(decorated.getHeaders().get("Content-Type"));
+
+        Request request = new Request(TEST_URI).post("{\"body\":{}}");
+        decorator.decorate(request);
+        assertEquals(List.of("application/json"), request.getHeaders().get("Content-Type"));
     }
     
     @Test
     void testMultipleDecorators() {
         String token = "test-token";
         RequestDecorator authDecorator = RequestDecorator.bearerAuth(token);
-        RequestDecorator jsonDecorator = RequestDecorator.consumesJson();
+        RequestDecorator jsonDecorator = RequestDecorator.sendJson();
         
-        Builder builder = HttpRequest.newBuilder().uri(TEST_URI);
-        builder = authDecorator.decorate(builder, TEST_REQUEST);
-        builder = jsonDecorator.decorate(builder, TEST_REQUEST);
+        Request request = new Request(TEST_URI).post("{\"body\":{}}");
+        request = authDecorator.decorate(request);
+        request = jsonDecorator.decorate(request);
         
-        HttpRequest request = builder.build();
-        assertEquals("Bearer " + token, request.headers().firstValue("Authorization").orElse(null));
-        assertEquals("application/json", request.headers().firstValue("Content-Type").orElse(null));
+        assertEquals(List.of("Bearer " + token), request.getHeaders().get("Authorization"));
+        assertEquals(List.of("application/json"), request.getHeaders().get("Content-Type"));
     }
     
     @Test
@@ -84,7 +69,7 @@ class RequestDecoratorTest {
         assertThrows(NullPointerException.class, () -> RequestDecorator.basicAuth(null, "pass"));
         assertThrows(NullPointerException.class, () -> RequestDecorator.basicAuth("user", null));
         
-        RequestDecorator decorator = RequestDecorator.bearerAuth("token");
-        assertThrows(NullPointerException.class, () -> decorator.decorate(null, TEST_REQUEST));
+        final RequestDecorator decorator = RequestDecorator.bearerAuth("token");
+        assertThrows(NullPointerException.class, () -> decorator.decorate(null));
     }
 }

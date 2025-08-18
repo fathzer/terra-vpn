@@ -1,78 +1,183 @@
 package com.fathzer.http;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 
+/**
+ * Represents an HTTP request with its method, URI, headers, and optional body.
+ * This class provides a builder-style API for constructing HTTP requests.
+ * 
+ * <p>Example usage:
+ * <pre>{@code
+ * Request request = new Request("https://api.example.com")
+ *     .path("users")
+ *     .param("active", "true")
+ *     .header("Accept", "application/json")
+ *     .get();
+ * }</pre>
+ * 
+ * @see Method
+ * @see UriBuilder
+ */
 @ParametersAreNonnullByDefault
 public class Request {
+    /** The HTTP method for this request. */
     private Method method;
-    private URI uri;
+    /** The URI builder for constructing the request target. */
+    private UriBuilder uriBuilder;
+    /** The map of HTTP headers for this request. */
     private Map<String, List<String>> headers;
+    /** The request body object, or null if no body. */
     private Object body;
-    private String bodyAsString;
 
-    /**
-     * Creates a request with the specified method, URI, and body, but no additional headers.
-     * @param uri the target URI for the request
-     * @param method the HTTP method (GET, POST, etc.)
-     * @param headers a map of HTTP headers where keys are header names and values are lists of header values
-     * @param body the request body, or null if no body should be sent
-     */
-    public Request(URI uri, Method method, Map<String, List<String>> headers, @Nullable Object body, @Nullable String bodyAsString) {
+    private Request(UriBuilder uriBuilder, Method method, Map<String, List<String>> headers, @Nullable Object body) {
+        Objects.requireNonNull(uriBuilder);
         Objects.requireNonNull(method);
-        Objects.requireNonNull(uri);
         Objects.requireNonNull(headers);
         if (!method.hasBody() && body != null) {
             throw new IllegalArgumentException("Body is not allowed for method " + method);
         }
-        if (bodyAsString != null && body == null) {
-            throw new IllegalArgumentException("Serializer is not allowed for null body");
-        }
-        if (bodyAsString == null && body != null) {
-            throw new IllegalArgumentException("Serializer is required for non-null body");
-        }
         this.method = method;
-        this.uri = uri;
+        this.uriBuilder = uriBuilder;
         this.headers = headers;
         this.body = body;
-        this.bodyAsString = bodyAsString;
     }
 
     /**
      * Creates a GET request with the specified URI and no headers or body.
      *
-     * @param uri the target URI for the request
+     * @param baseUri the base URI for the request
      */
-    public Request(URI uri) {
-        this(uri, Method.GET, Map.of(), null, null);
+    public Request(String baseUri) {
+        this(new UriBuilder(baseUri), Method.GET, new HashMap<>(), null);
     }
+
     /**
-     * Creates a request with the specified method and URI, and no headers or body.
+     * Sets the request method to POST and sets the request body.
      *
-     * @param method the HTTP method to use
-     * @param uri the target URI for the request
+     * @param <T> the type of the body object
+     * @param body the request body, may be null
+     * @return this request instance for method chaining
      */
-    public Request(URI uri, Method method) {
-        this(uri, method, Map.of(), null, null);
+    public <T> Request post(@Nullable T body) {
+        return this.setBody(Method.POST, body);
     }
 
-    public <T> void setBody(T body, Function<T, String> serializer) {
+    /**
+     * Sets the request method to PUT and sets the request body.
+     *
+     * @param <T> the type of the body object
+     * @param body the request body, may be null
+     * @return this request instance for method chaining
+     */
+    public <T> Request put(@Nullable T body) {
+        return this.setBody(Method.PUT, body);
+    }
+
+    /**
+     * Sets the request method to PATCH and sets the request body.
+     *
+     * @param <T> the type of the body object
+     * @param body the request body, may be null
+     * @return this request instance for method chaining
+     */
+    public <T> Request patch(@Nullable T body) {
+        return this.setBody(Method.PATCH, body);
+    }
+
+    /**
+     * Sets the request method to GET and removes any existing body.
+     *
+     * @return this request instance for method chaining
+     */
+    public Request get() {
+        return this.setBody(Method.GET, null);
+    }
+
+    /**
+     * Sets the request method to HEAD and removes any existing body.
+     *
+     * @return this request instance for method chaining
+     */
+    public Request head() {
+        return this.setBody(Method.HEAD, null);
+    }
+
+    /**
+     * Sets the request method to OPTIONS and removes any existing body.
+     *
+     * @return this request instance for method chaining
+     */
+    public Request options() {
+        return this.setBody(Method.OPTIONS, null);
+    }
+
+    /**
+     * Sets the request method to DELETE and removes any existing body.
+     *
+     * @return this request instance for method chaining
+     */
+    public Request delete() {
+        return this.setBody(Method.DELETE, null);
+    }
+    
+    private <T> Request setBody(Method method, @Nullable T body) {
+        if (!method.hasBody() && body != null) {
+            throw new IllegalArgumentException("Body is not allowed for method " + method);
+        }
         this.body = body;
-        this.bodyAsString = serializer.apply(body);
+        this.method = method;
+        return this;
     }
 
-    public void setHeaders(Map<String, List<String>> headers) {
-        Objects.requireNonNull(headers);
-        this.headers = headers;
+    /**
+     * Adds a header to the request. Multiple values can be added for the same header name.
+     *
+     * @param header the header name (case-insensitive)
+     * @param value the header value
+     * @return this request instance for method chaining
+     * @throws NullPointerException if header or value is null
+     */
+    public Request header(String header, String value) {
+        Objects.requireNonNull(header);
+        Objects.requireNonNull(value);
+        this.headers.computeIfAbsent(header, k -> new LinkedList<>()).add(value);
+        return this;
     }
 
-        /**
+    /**
+     * Appends a path segment to the request URI.
+     *
+     * @param path the path segment to append
+     * @return this request instance for method chaining
+     * @throws NullPointerException if path is null
+     */
+    public Request path(String path) {
+        this.uriBuilder.pathSegment(path);
+        return this;
+    }
+
+    /**
+     * Adds a query parameter to the request URI.
+     *
+     * @param name the parameter name
+     * @param value the parameter value
+     * @return this request instance for method chaining
+     * @throws NullPointerException if name or value is null
+     */
+    public Request param(String name, String value) {
+        this.uriBuilder.queryParam(name, value);
+        return this;
+    }
+
+    /**
      * Returns the HTTP method of this request.
      *
      * @return the HTTP method
@@ -87,7 +192,7 @@ public class Request {
      * @return the target URI
      */
     public URI getUri() {
-        return uri;
+        return uriBuilder.build();
     }
 
     /**
@@ -108,15 +213,5 @@ public class Request {
     @Nullable
     public Object getBody() {
         return body;
-    }
-
-    /**
-     * Returns the request body as a string, if any.
-     *
-     * @return the request body as a string, or null if no body is present
-     */
-    @Nullable
-    public String getBodyAsString() {
-        return bodyAsString;
     }
 }

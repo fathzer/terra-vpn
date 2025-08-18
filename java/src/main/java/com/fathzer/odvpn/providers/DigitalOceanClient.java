@@ -1,14 +1,13 @@
 package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fathzer.http.Request;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
@@ -88,7 +87,7 @@ public class DigitalOceanClient extends BasicVPSProviderClient {
             @JsonProperty("droplet_ids") List<String> dropletIds,
             @JsonProperty("inbound_rules") List<FirewallRule> rules) {}
         final FirewallCreationRequest firewallCreationRequest = new FirewallCreationRequest("On-Demand-Vpn", List.of(serverId), List.of(SSH_RULE, vpnRule));
-        final String firewallResponseBody = this.post(URI.create(getRootUrl() + FIREWALLS_PATH), firewallCreationRequest);
+        final String firewallResponseBody = this.execute(new Request(getRootUrl() + FIREWALLS_PATH).post(firewallCreationRequest));
         final String firewallId = this.objectMapper.readTree(firewallResponseBody).get("firewall").get("id").asText();
         return serverId+"/"+firewallId;
     }
@@ -96,8 +95,8 @@ public class DigitalOceanClient extends BasicVPSProviderClient {
     @Override
     public VPSState getState(String id) throws IOException {
         final String serverId = id.split("/")[0];
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + serverId)).build());
-        final JsonNode server = this.objectMapper.readTree(response.body()).get("droplet");
+        final String response = this.execute(new Request(getRootUrl() + getInstancesPath() + "/" + serverId));
+        final JsonNode server = this.objectMapper.readTree(response).get("droplet");
         Status status = Status.STARTING;
         String ip = null;
         if (!server.isNull()) {
@@ -120,6 +119,6 @@ public class DigitalOceanClient extends BasicVPSProviderClient {
         final String serverId = id.split("/")[0];
         final String firewallId = id.split("/")[1];
         super.delete(serverId);
-        this.doRequest(this.newRequest(URI.create(getRootUrl() + FIREWALLS_PATH + "/" + firewallId)).DELETE().build());
+        this.execute(new Request(getRootUrl() + FIREWALLS_PATH + "/" + firewallId).delete());
     }
 }

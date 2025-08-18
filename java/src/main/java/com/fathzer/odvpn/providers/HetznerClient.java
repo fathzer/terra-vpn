@@ -1,8 +1,6 @@
 package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -10,6 +8,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fathzer.http.Request;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
@@ -91,8 +90,8 @@ public class HetznerClient extends BasicVPSProviderClient {
 
     @Override
     public VPSState getState(String id) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(getRootUrl() + getInstancesPath() + "/" + id)).build());
-        final JsonNode server = this.objectMapper.readTree(response.body()).get("server");
+        final String response = this.execute(new Request(getRootUrl() + getInstancesPath() + "/" + id));
+        final JsonNode server = this.objectMapper.readTree(response).get("server");
         Status status = Status.STARTING;
         String ip = null;
         if (!server.isNull()) {

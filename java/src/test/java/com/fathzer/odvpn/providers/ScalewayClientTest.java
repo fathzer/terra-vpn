@@ -2,12 +2,13 @@ package com.fathzer.odvpn.providers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.net.http.HttpRequest;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fathzer.http.Request;
 
 class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
     private static final String KEYS_URI = "https://api.scaleway.com/iam/v1alpha1/ssh-keys";
@@ -26,8 +27,8 @@ class ScalewayClientTest extends VPSProviderClientTestBase<ScalewayClient> {
         """;
 
     @Override
-    protected void validateHeaders(HttpRequest request) {
-        assertEquals(TEST_TOKEN, request.headers().firstValue("X-Auth-Token").orElse(""));
+    protected void validateHeaders(Request request) {
+        assertEquals(List.of(TEST_TOKEN), request.getHeaders().get("X-Auth-Token"));
     }
 
     @Override

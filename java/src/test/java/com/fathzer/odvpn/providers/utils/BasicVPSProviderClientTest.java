@@ -1,13 +1,9 @@
 package com.fathzer.odvpn.providers.utils;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
@@ -20,6 +16,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.repository.VPNConfig;
+import com.fathzer.http.Request;
+import com.fathzer.http.RequestDecorator;
 
 class BasicVPSProviderClientTest {
 
@@ -29,7 +27,7 @@ class BasicVPSProviderClientTest {
         private String customRegionsPath;
         
         public TestClient(String token) {
-            super(new TokenAuthentication(token));
+            super(RequestDecorator.bearerAuth(token));
         }
 
         @Override
@@ -45,16 +43,6 @@ class BasicVPSProviderClientTest {
         @Override
         protected String getRegionsPath() {
             return customRegionsPath != null ? customRegionsPath : super.getRegionsPath();
-        }
-            
-        public void setHttpClient(HttpClient client) {
-            try {
-                java.lang.reflect.Field clientField = AbstractVPSProviderClient.class.getDeclaredField("client");
-                clientField.setAccessible(true);
-                clientField.set(this, client);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to set HTTP client", e);
-            }
         }
 
         @Override
@@ -90,19 +78,21 @@ class BasicVPSProviderClientTest {
     }
     
     @Mock
-    private HttpClient httpClient;
-    @Mock
     private HttpResponse<String> httpResponse;
     private TestClient testClient;
+    private Request lastRequest;
 
     @BeforeEach
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this).close();
         testClient = new TestClient("test-token");
-        testClient.setHttpClient(httpClient);
+        testClient.getRestClient().withRequestSender((c,r) -> {
+        	lastRequest = r;
+        	return httpResponse;
+        });
         
         when(httpResponse.statusCode()).thenReturn(200);
-        when(httpClient.<String>send(any(), any())).thenReturn(httpResponse);
+        lastRequest = null;
     }
 
     @Test
@@ -118,13 +108,9 @@ class BasicVPSProviderClientTest {
             """);
         String keyId = testClient.getSSHKeyId("test-key");
         assertEquals("key1", keyId);
-        
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/ssh-keys") &&
-                   request.method().equals("GET") &&
-                   request.headers().firstValue("Authorization").orElse("").equals("Bearer test-token");
-        }), any());
+        assertEquals("https://api.example.com/ssh-keys", lastRequest.getUri().toString());
+        assertEquals("GET", lastRequest.getMethod().name());
+        assertEquals(List.of("Bearer test-token"), lastRequest.getHeaders().get("Authorization"));
 
         // Test with unknown key
         assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("nonexistent-key"));
@@ -132,12 +118,11 @@ class BasicVPSProviderClientTest {
         assertThrows(IllegalArgumentException.class, () -> testClient.getSSHKeyId("another-key"));
 
         // Test with custom path
+        lastRequest = null;
         testClient.customSshKeysPath = "/custom-keys";
         testClient.getSSHKeyId("test-key");
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/custom-keys");
-        }), any());
+        assertEquals("https://api.example.com/custom-keys", lastRequest.getUri().toString());
+
 
         // Test with custom response type
         when(httpResponse.body()).thenReturn("""
@@ -165,25 +150,22 @@ class BasicVPSProviderClientTest {
         testClient.checkRegion("sgp1");
         
         // Verify the request was made correctly
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/regions") &&
-                   request.method().equals("GET") &&
-                   request.headers().firstValue("Authorization").orElse("").equals("Bearer test-token");
-        }), any());
+        assertEquals("https://api.example.com/regions", lastRequest.getUri().toString());
+        assertEquals("GET", lastRequest.getMethod().name());
+        assertEquals(List.of("Bearer test-token"), lastRequest.getHeaders().get("Authorization"));
+
 
         // Unknown region
         assertThrows(IllegalArgumentException.class, () -> testClient.checkRegion("par2"));
 
         // Test with custom path
+        lastRequest = null;
         testClient.customRegionsPath = "/custom-regions";
         testClient.checkRegion("lon1");
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/custom-regions");
-        }), any());
+        assertEquals("https://api.example.com/custom-regions", lastRequest.getUri().toString());
         
         // Custom response type
+        lastRequest = null;
         when(httpResponse.body()).thenReturn("""
             { "locations": ["nyc1", "sgp1"] }
         """);
@@ -200,20 +182,19 @@ class BasicVPSProviderClientTest {
         // Known type
         testClient.checkInstanceType("us-east-1", "t2.micro");
         // Verify request path
-        verify(httpClient).send(argThat(req -> {
-            HttpRequest request = (HttpRequest) req;
-            return request.uri().toString().equals("https://api.example.com/instance-types");
-        }), any());
+        assertEquals("https://api.example.com/instance-types", lastRequest.getUri().toString());
+        assertEquals("GET", lastRequest.getMethod().name());
+        assertEquals(List.of("Bearer test-token"), lastRequest.getHeaders().get("Authorization"));
+
         // Clear invocations before next call
-        clearInvocations(httpClient);
         // Unknown type
         assertThrows(IllegalArgumentException.class, () -> testClient.checkInstanceType("us-east-1", "x1.large"));
         // Custom response type
         when(httpResponse.body()).thenReturn("""
             { "types": ["t2.micro"] }
         """);
-        @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-        record CustomTypesResponse(java.util.List<String> types) {}
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record CustomTypesResponse(List<String> types) {}
         testClient.checkInstanceType("us-east-1", "t2.micro", CustomTypesResponse.class, resp -> resp.types() != null && resp.types().contains("t2.micro"));
     }
 }

@@ -1,8 +1,8 @@
 package com.fathzer.odvpn.providers.utils;
 
+import com.fathzer.http.RequestException.AuthenticationException;
+import com.fathzer.http.RequestException.ClientErrorException;
 import com.fathzer.odvpn.VPSProvider.VPSState;
-import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.AuthenticationException;
-import com.fathzer.odvpn.providers.utils.AbstractVPSProviderClient.ErrorResponseException;
 import com.fathzer.odvpn.repository.VPNConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -82,7 +82,9 @@ class BasicVPSProviderTest {
 
     @Test
     void testCheckConfiguration_authenticationException() throws Exception {
-        when(client.getSSHKeyId("sshKey")).thenThrow(new AuthenticationException(401, "Auth failed"));
+        AuthenticationException authenticationException = mock(AuthenticationException.class);
+        when(authenticationException.getMessage()).thenReturn("Auth failed");
+        when(client.getSSHKeyId("sshKey")).thenThrow(authenticationException);
         List<String> errors = provider.checkConfiguration();
         assertFalse(errors.isEmpty());
         assertTrue(errors.stream().anyMatch(e -> e.contains("Auth failed")));
@@ -125,7 +127,9 @@ class BasicVPSProviderTest {
 
     @Test
     void testExists_notFound() throws Exception {
-        when(client.getState("id")).thenThrow(new ErrorResponseException(404, "Not found"));
+        ClientErrorException clientErrorException = mock(ClientErrorException.class);
+        when(clientErrorException.getStatusCode()).thenReturn(404);
+        when(client.getState("id")).thenThrow(clientErrorException);
         assertFalse(provider.exists("id"));
     }
 

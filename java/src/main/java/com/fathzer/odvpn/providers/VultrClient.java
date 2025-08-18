@@ -1,12 +1,11 @@
 package com.fathzer.odvpn.providers;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fathzer.http.Request;
 import com.fathzer.odvpn.VPSProvider.Status;
 import com.fathzer.odvpn.VPSProvider.VPSState;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
@@ -70,18 +69,6 @@ public class VultrClient extends BasicVPSProviderClient {
     }
 
     @Override
-    protected String getErrorMessage(HttpResponse<String> response) {
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record ErrorResponse(String error, int status) {}
-        try {
-            final ErrorResponse errorResponse = this.objectMapper.readValue(response.body(), ErrorResponse.class);
-            return errorResponse.error;
-        } catch (IOException e) {
-            return "Unknown error with " + response.statusCode()+ " status code";
-        }
-    }
-
-    @Override
     public String create(VPSCreationSettings request, VPNConfig vpnConfig) throws IOException {
         IOFunction<String, String> idGetter = response -> this.objectMapper.readValue(response, InstanceFullResponse.class).instance().id;
         record InstanceCreationRequest(String region, String plan, String label,
@@ -94,8 +81,8 @@ public class VultrClient extends BasicVPSProviderClient {
 
     @Override
     public VPSState getState(String id) throws IOException {
-        final HttpResponse<String> response = this.doRequest(this.newRequest(URI.create(API_URL + "/instances/" + id)).build());
-        final InstanceResponse instanceResponse = this.objectMapper.readValue(response.body(), InstanceFullResponse.class).instance();
+        final String response = this.execute(new Request(API_URL + "/instances/" + id));
+        final InstanceResponse instanceResponse = this.objectMapper.readValue(response, InstanceFullResponse.class).instance();
         final Status status;
         if (instanceResponse==null || instanceResponse.mainIp()==null) {
             status = Status.STARTING;

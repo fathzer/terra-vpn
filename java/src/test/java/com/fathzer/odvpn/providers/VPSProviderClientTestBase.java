@@ -1,24 +1,21 @@
 package com.fathzer.odvpn.providers;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mockito;
-import org.mockito.stubbing.Answer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fathzer.http.Request;
 import com.fathzer.odvpn.providers.utils.BasicVPSProviderClient;
 
 /**
@@ -38,43 +35,31 @@ public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient
      * Override this to customize header validation logic per provider.
      * Default: checks for Authorization: Bearer <token>
      */
-    protected void validateHeaders(HttpRequest request) {
-        assertEquals("Bearer " + TEST_TOKEN, request.headers().firstValue("Authorization").orElse(""));
+    protected void validateHeaders(Request request) {
+        assertEquals(List.of("Bearer " + TEST_TOKEN), request.getHeaders().get("Authorization"));
     }
-    @SuppressWarnings({"unchecked"})
+    
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mockResponses.clear();
-        // Create a mock HttpClient
-        HttpClient mockHttpClient = Mockito.mock(HttpClient.class);
-        try {
-            client = getClientClass().getConstructor(String.class).newInstance(TEST_TOKEN);
-            client.setHttpClient(mockHttpClient);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to instantiate client", e);
+        client = getClientClass().getConstructor(String.class).newInstance(TEST_TOKEN);
+        client.getRestClient().withRequestSender(this::send);
+    }
+    
+    private HttpResponse<String> send(HttpClient client, Request request) {
+    	String reqUri = request.getUri().toString();
+        String reqMethod = request.getMethod().name();
+        validateHeaders(request);
+        ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
+        if (respData == null) {
+            throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
         }
-        // Set up the mock to return the appropriate HttpResponse for each request
-        try {
-            Mockito.when(mockHttpClient.send(Mockito.any(HttpRequest.class), Mockito.any(HttpResponse.BodyHandler.class)))
-                    .thenAnswer((Answer<HttpResponse<String>>) invocation -> {
-                        HttpRequest request = invocation.getArgument(0);
-                        String reqUri = request.uri().toString();
-                        String reqMethod = request.method().toUpperCase();
-                        validateHeaders(request);
-                        ResponseData respData = mockResponses.get(new RequestKey(reqUri, reqMethod));
-                        if (respData == null) {
-                            throw new IllegalStateException("No mock response for URI " + reqUri + " and method " + reqMethod);
-                        }
-                        if (respData.requestBodyCheckConsumer != null) {
-                            final String requestBodyJson = getRequestBodyJson(request);
-                            assertNotNull(requestBodyJson, "Request body JSON of " + reqMethod + " " + reqUri + " is null");
-                            respData.requestBodyCheckConsumer.accept(requestBodyJson);
-                        }
-                        return respData.response();
-                    });
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
+        if (respData.requestBodyCheckConsumer != null) {
+            final String requestBodyJson = getRequestBodyJson(request);
+            assertNotNull(requestBodyJson, "Request body JSON of " + reqMethod + " " + reqUri + " is null");
+            respData.requestBodyCheckConsumer.accept(requestBodyJson);
         }
+        return respData.response;
     }
 
     /**
@@ -114,26 +99,13 @@ public abstract class VPSProviderClientTestBase<T extends BasicVPSProviderClient
     }
 
     /**
-     * Gets body JSON of a HttpRequest as a String.
+     * Gets body JSON of a Request as a String.
      */
-    private static String getRequestBodyJson(HttpRequest req) {
-        return req.bodyPublisher().map(bp -> {
-            StringBuilder sb = new StringBuilder();
-            bp.subscribe(new Flow.Subscriber<ByteBuffer>() {
-                @Override public void onSubscribe(Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
-                @Override public void onNext(ByteBuffer bb) {
-                    byte[] bytes = new byte[bb.remaining()];
-                    bb.get(bytes);
-                    sb.append(new String(bytes, StandardCharsets.UTF_8));
-                }
-                @Override public void onError(Throwable throwable) {
-                    // Does nothing
-                }
-                @Override public void onComplete() {
-                    // Does nothing
-                }
-            });
-            return sb.toString();
-        }).orElse(null);
+    private static String getRequestBodyJson(Request req) {
+        try {
+            return new ObjectMapper().writeValueAsString(req.getBody());
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

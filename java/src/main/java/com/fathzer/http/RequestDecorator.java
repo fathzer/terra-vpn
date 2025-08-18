@@ -1,6 +1,5 @@
 package com.fathzer.http;
 
-import java.net.http.HttpRequest.Builder;
 import java.util.Objects;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -10,13 +9,13 @@ import javax.annotation.ParametersAreNonnullByDefault;
  */
 @FunctionalInterface
 @ParametersAreNonnullByDefault
-interface RequestDecorator {
+public interface RequestDecorator {
     /**
      * Creates a decorator for Bearer authentication
      */
     static RequestDecorator bearerAuth(String token) {
         Objects.requireNonNull(token);
-        return (builder, request) -> builder.header("Authorization", "Bearer " + token);
+        return request -> request.header("Authorization", "Bearer " + token);
     }
     
     /**
@@ -26,30 +25,34 @@ interface RequestDecorator {
         Objects.requireNonNull(username);
         Objects.requireNonNull(password);
         final String credentials = java.util.Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
-        return (builder, request) -> builder.header("Authorization", "Basic " + credentials);
+        return request -> request.header("Authorization", "Basic " + credentials);
     }
 
     /**
      * Creates a decorator for JSON production
      * @return
      */
-    static RequestDecorator producesJson() {
-        return (builder, request) -> builder.header("Accept", "application/json");
+    static RequestDecorator acceptJson() {
+        return request -> request.header("Accept", "application/json");
     }
 
     /**
      * Creates a decorator for JSON consumption
      * @return
      */
-    static RequestDecorator consumesJson() {
-        return (builder, request) -> builder.header("Content-Type", "application/json");
+    static RequestDecorator sendJson() {
+        return request -> {
+            if (request.getBody() != null) {
+                request.header("Content-Type", "application/json");
+            }
+            return request;
+        };
     }
 
     /**
      * Decorates the request builder with the given request
-     * @param requestBuilder the request builder to decorate
      * @param request the request to decorate
-     * @return the decorated request builder
+     * @return the decorated request
      */
-    Builder decorate(Builder requestBuilder, Request request);
+    Request decorate(Request request);
 }
